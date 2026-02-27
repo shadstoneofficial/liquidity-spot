@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <!-- User Stats -->
+    <div class="bg-black/30 p-6 rounded-lg">
+        <h2 class="text-2xl font-bold mb-4 text-gfa-light">My Profile</h2>
+        <div class="space-y-2">
+            <p><span class="text-gfa-grey">Username:</span> {{ user.username }}</p>
+            <p><span class="text-gfa-grey">Tier:</span> {{ user.tier }}</p>
+            <p><span class="text-gfa-grey">Gems Balance:</span> {{ user.gems_balance }} 💎</p>
+            <p><span class="text-gfa-grey">Completed Swaps:</span> {{ user.completed_swaps }}</p>
+        </div>
+    </div>
+
+    <!-- Active Orders -->
+    <div class="md:col-span-2 bg-black/30 p-6 rounded-lg">
+        <h2 class="text-2xl font-bold mb-4 text-gfa-light">My Active Orders</h2>
+        {% if orders %}
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="border-b border-gfa-grey/30">
+                            <th class="p-2">Side</th>
+                            <th class="p-2">Amount (HNS)</th>
+                            <th class="p-2">Price (BTC)</th>
+                            <th class="p-2">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in orders %}
+                            <tr class="border-b border-gfa-grey/10">
+                                <td class="p-2 uppercase {{ 'text-green-400' if order.side == 'buy' else 'text-red-400' }}">{{ order.side }}</td>
+                                <td class="p-2">{{ order.amount_hns }}</td>
+                                <td class="p-2">{{ order.price_btc_per_hns }}</td>
+                                <td class="p-2">{{ order.status }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="text-gfa-grey">No active orders.</p>
+        {% endif %}
+    </div>
+
+    <!-- Active Swaps -->
+    <div class="md:col-span-3 bg-black/30 p-6 rounded-lg">
+        <h2 class="text-2xl font-bold mb-4 text-gfa-light">My Swaps</h2>
+        {% if swaps %}
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="border-b border-gfa-grey/30">
+                            <th class="p-2">ID</th>
+                            <th class="p-2">Role</th>
+                            <th class="p-2">Status</th>
+                            <th class="p-2">Created</th>
+                            <th class="p-2">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for swap in swaps %}
+                            <tr class="border-b border-gfa-grey/10 hover:bg-white/5">
+                                <td class="p-2">#{{ swap.id }}</td>
+                                <td class="p-2">
+                                    {% if swap.matcher_id == user.id %}
+                                        Matcher (Taker)
+                                    {% else %}
+                                        Order Creator (Maker)
+                                    {% endif %}
+                                </td>
+                                <td class="p-2 uppercase">{{ swap.status }}</td>
+                                <td class="p-2">{{ swap.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td class="p-2">
+                                    <a href="{{ url_for('main.swap_details', id=swap.id) }}" class="text-gfa-blue hover:text-blue-300">View Details</a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="text-gfa-grey">No swaps yet.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

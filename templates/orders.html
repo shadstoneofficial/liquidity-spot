@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <!-- Create Order Form -->
+    <div class="bg-black/30 p-6 rounded-lg">
+        <h2 class="text-2xl font-bold mb-4 text-gfa-light">Create Order</h2>
+        <form method="POST" action="{{ url_for('main.orders') }}" class="space-y-4">
+            <div>
+                <label class="block text-gfa-grey mb-1">Side</label>
+                <select name="side" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white">
+                    <option value="buy">Buy HNS (Sell BTC)</option>
+                    <option value="sell">Sell HNS (Buy BTC)</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-gfa-grey mb-1">Amount (HNS)</label>
+                <input type="number" step="0.00000001" name="amount_hns" required class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white" placeholder="1000">
+            </div>
+            <div>
+                <label class="block text-gfa-grey mb-1">Price (BTC per HNS)</label>
+                <input type="number" step="0.00000001" name="price" required class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white" placeholder="0.00000050">
+            </div>
+            <div>
+                <label class="block text-gfa-grey mb-1">Stake Gems (Optional)</label>
+                <input type="number" name="gems_stake" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white" placeholder="50">
+            </div>
+            <button type="submit" class="w-full bg-gfa-light text-gfa-dark font-bold py-2 rounded hover:bg-white transition">Post Order</button>
+        </form>
+    </div>
+
+    <!-- Order Book -->
+    <div class="md:col-span-2 bg-black/30 p-6 rounded-lg">
+        <h2 class="text-2xl font-bold mb-4 text-gfa-light">Order Book</h2>
+        {% if orders %}
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="border-b border-gfa-grey/30">
+                            <th class="p-2">User</th>
+                            <th class="p-2">Side</th>
+                            <th class="p-2">Amount (HNS)</th>
+                            <th class="p-2">Price (BTC)</th>
+                            <th class="p-2">Stake</th>
+                            <th class="p-2">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in orders %}
+                            {% if order.user_id != session.get('user_id') %}
+                            <tr class="border-b border-gfa-grey/10 hover:bg-white/5">
+                                <td class="p-2 text-sm text-gfa-grey">{{ order.user.username }}</td>
+                                <td class="p-2 uppercase {{ 'text-green-400' if order.side == 'buy' else 'text-red-400' }}">{{ order.side }}</td>
+                                <td class="p-2">{{ order.amount_hns }}</td>
+                                <td class="p-2">{{ order.price_btc_per_hns }}</td>
+                                <td class="p-2">{{ order.gems_stake }} 💎</td>
+                                <td class="p-2">
+                                    <form method="POST" action="{{ url_for('main.accept_order', order_id=order.id) }}">
+                                        <button type="submit" class="bg-gfa-blue text-white text-xs px-3 py-1 rounded hover:bg-blue-600">Accept</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="text-gfa-grey">No open orders available.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

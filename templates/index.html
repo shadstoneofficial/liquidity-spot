@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="text-center py-20">
+    <h1 class="text-5xl font-bold mb-6 text-gfa-light">Trustless HNS/BTC Swaps</h1>
+    <p class="text-xl mb-8 max-w-2xl mx-auto">
+        Non-custodial peer-to-peer atomic swaps between Handshake and Bitcoin.
+        No middlemen. No KYC. Just math.
+    </p>
+    <a href="{{ url_for('auth.login') }}" class="bg-gfa-blue text-white text-xl px-8 py-4 rounded-lg font-bold hover:bg-blue-600 transition shadow-lg">
+        Connect GFAVIP Wallet
+    </a>
+</div>
+{% endblock %}

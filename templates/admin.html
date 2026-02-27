@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto bg-black/30 p-8 rounded-lg">
+    <h1 class="text-3xl font-bold mb-6 text-gfa-light">Admin Panel</h1>
+    
+    <div class="bg-black/50 p-6 rounded-lg mb-8">
+        <h2 class="text-xl font-bold mb-4 text-white">Credit Gems</h2>
+        <form method="POST" action="{{ url_for('admin.credit_gems') }}" class="space-y-4">
+            <div>
+                <label class="block text-gfa-grey mb-1">User ID</label>
+                <input type="text" name="user_id" required class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white" placeholder="UUID">
+            </div>
+            <div>
+                <label class="block text-gfa-grey mb-1">Amount</label>
+                <input type="number" name="amount" required class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white" placeholder="50">
+            </div>
+            <div>
+                <label class="block text-gfa-grey mb-1">Reason</label>
+                <input type="text" name="reason" required class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white" placeholder="Bonus">
+            </div>
+            <button type="submit" class="w-full bg-gfa-light text-gfa-dark font-bold py-2 rounded hover:bg-white transition">Credit Gems</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

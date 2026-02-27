@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto bg-black/30 p-8 rounded-lg">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-gfa-light">Swap #{{ swap.id }}</h1>
+        <span class="bg-blue-500/20 text-blue-300 px-3 py-1 rounded uppercase text-sm font-bold">{{ swap.status }}</span>
+    </div>
+
+    <!-- Swap Parameters -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+        <div>
+            <h3 class="text-xl font-bold mb-4 text-white">Trade Details</h3>
+            <div class="space-y-2 text-gfa-grey">
+                <p><strong>Pair:</strong> HNS / BTC</p>
+                <p><strong>Amount:</strong> {{ swap.order.amount_hns }} HNS</p>
+                <p><strong>Price:</strong> {{ swap.order.price_btc_per_hns }} BTC</p>
+                <p><strong>Total BTC:</strong> {{ swap.order.amount_hns * swap.order.price_btc_per_hns }} BTC</p>
+                <p><strong>Coingecko Price:</strong> {{ coingecko_price }} BTC</p>
+            </div>
+        </div>
+        
+        <div>
+            <h3 class="text-xl font-bold mb-4 text-white">Your Role</h3>
+            <div class="bg-black/50 p-4 rounded border border-gfa-grey/20">
+                {% if user.id == swap.role_alice_user_id %}
+                    <p class="text-lg font-bold text-green-400 mb-2">You are Alice (HNS Holder)</p>
+                    <p class="text-sm text-gfa-grey">You must lock HNS first.</p>
+                {% else %}
+                    <p class="text-lg font-bold text-blue-400 mb-2">You are Bob (BTC Holder)</p>
+                    <p class="text-sm text-gfa-grey">You wait for Alice to lock HNS, then you lock BTC.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Technical Params -->
+    <div class="bg-black/50 p-6 rounded-lg mb-8 border border-gfa-grey/20">
+        <h3 class="text-xl font-bold mb-4 text-white">Technical Parameters</h3>
+        
+        <div class="mb-4">
+            <p class="text-sm text-gfa-grey mb-1">Secret Hash (SHA256)</p>
+            <code class="block bg-black/80 p-3 rounded text-green-400 font-mono break-all">{{ swap.secret_hash }}</code>
+        </div>
+
+        {% if secret %}
+        <div class="mb-4">
+            <p class="text-sm text-gfa-grey mb-1">Secret (Keep Safe!)</p>
+            <div class="flex items-center gap-2">
+                <code class="block bg-red-900/30 p-3 rounded text-red-300 font-mono break-all flex-grow">{{ secret }}</code>
+                <span class="text-xs text-red-400">Only visible to you</span>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <p class="text-sm text-gfa-grey">Alice Timelock</p>
+                <p class="font-mono">~{{ swap.timelock_alice_sec // 600 }} blocks ({{ swap.timelock_alice_sec / 3600 }}h)</p>
+            </div>
+            <div>
+                <p class="text-sm text-gfa-grey">Bob Timelock</p>
+                <p class="font-mono">~{{ swap.timelock_bob_sec // 600 }} blocks ({{ swap.timelock_bob_sec / 3600 }}h)</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Instructions -->
+    <div class="space-y-6">
+        <h3 class="text-2xl font-bold text-white">Step-by-Step Instructions</h3>
+        
+        {% if user.id == swap.role_alice_user_id %}
+            <!-- Alice Instructions -->
+            <ol class="list-decimal list-inside space-y-4 text-gfa-grey">
+                <li class="pl-2">
+                    <span class="text-white font-bold">Lock HNS:</span> 
+                    Open Bob Wallet. Create an HTLC transaction sending <strong>{{ swap.order.amount_hns }} HNS</strong>.
+                    <br>
+                    Use Hash: <code class="text-xs bg-black/50 px-1">{{ swap.secret_hash }}</code>
+                    <br>
+                    Timelock: <strong>{{ swap.timelock_alice_sec // 600 }} blocks</strong>.
+                </li>
+                <li class="pl-2">
+                    <span class="text-white font-bold">Share TXID:</span> 
+                    Send the Transaction ID to your counterparty via chat.
+                </li>
+                <li class="pl-2">
+                    <span class="text-white font-bold">Wait for Bob:</span> 
+                    Wait for Bob to lock BTC. Verify his transaction on a Bitcoin explorer.
+                </li>
+                <li class="pl-2">
+                    <span class="text-white font-bold">Claim BTC:</span> 
+                    Once Bob locks BTC, use your <strong>Secret</strong> to claim the BTC.
+                    <br>
+                    Revealing the secret allows Bob to claim your HNS.
+                </li>
+            </ol>
+        {% else %}
+            <!-- Bob Instructions -->
+            <ol class="list-decimal list-inside space-y-4 text-gfa-grey">
+                <li class="pl-2">
+                    <span class="text-white font-bold">Wait for Alice:</span> 
+                    Do not send any funds yet! Wait for Alice to provide an HNS Lock Transaction ID.
+                </li>
+                <li class="pl-2">
+                    <span class="text-white font-bold">Verify HNS Lock:</span> 
+                    Check Alice's transaction on an HNS explorer. Ensure the Hash matches and value is correct.
+                </li>
+                <li class="pl-2">
+                    <span class="text-white font-bold">Lock BTC:</span> 
+                    If HNS lock is valid, open your Bitcoin wallet (Electrum/Core).
+                    <br>
+                    Create HTLC sending <strong>{{ swap.order.amount_hns * swap.order.price_btc_per_hns }} BTC</strong>.
+                    <br>
+                    Use Hash: <code class="text-xs bg-black/50 px-1">{{ swap.secret_hash }}</code>
+                    <br>
+                    Timelock: <strong>{{ swap.timelock_bob_sec // 600 }} blocks</strong> (shorter than Alice's).
+                </li>
+                <li class="pl-2">
+                    <span class="text-white font-bold">Wait for Secret:</span> 
+                    Wait for Alice to claim your BTC. Her claim transaction will reveal the <strong>Secret</strong> on the blockchain.
+                </li>
+                <li class="pl-2">
+                    <span class="text-white font-bold">Claim HNS:</span> 
+                    Take the revealed Secret and use it to claim the HNS locked by Alice.
+                </li>
+            </ol>
+        {% endif %}
+    </div>
+    
+    <div class="mt-8 p-4 bg-red-900/20 border border-red-500/30 rounded text-sm text-red-200">
+        <strong>Disclaimer:</strong> This is a testnet MVP. Ensure you are using Testnet coins (HNS Regtest/Simnet or BTC Testnet) if applicable, or small amounts. Verify all parameters in your wallet before broadcasting.
+    </div>
+</div>
+{% endblock %}
