@@ -1,14 +1,44 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="text-center py-20">
-    <h1 class="text-5xl font-bold mb-6 text-gfa-light">Trustless HNS/BTC Swaps</h1>
-    <p class="text-xl mb-8 max-w-2xl mx-auto">
-        Non-custodial peer-to-peer atomic swaps between Handshake and Bitcoin.
-        No middlemen. No KYC. Just math.
-    </p>
-    <a href="{{ url_for('auth.login') }}" class="bg-gfa-blue text-white text-xl px-8 py-4 rounded-lg font-bold hover:bg-blue-600 transition shadow-lg">
-        Connect GFAVIP Wallet
-    </a>
+<div class="relative overflow-hidden rounded-xl bg-black/40 border border-gfa-grey/20 max-w-5xl mx-auto mt-8">
+    <!-- Video Background -->
+    <div class="absolute inset-0 z-0 opacity-40">
+        <video autoplay loop muted playsinline class="w-full h-full object-cover">
+            <source src="{{ url_for('static', filename='img/liquidity-spot.mp4') }}" type="video/mp4">
+        </video>
+        <div class="absolute inset-0 bg-gradient-to-t from-gfa-dark/90 to-transparent"></div>
+    </div>
+
+    <!-- Content -->
+    <div class="relative z-10 text-center py-20 px-6">
+        <h1 class="text-5xl font-bold mb-6 text-gfa-light drop-shadow-lg">Trustless HNS/BTC Swaps</h1>
+        <p class="text-xl mb-8 max-w-2xl mx-auto drop-shadow-md text-white">
+            Non-custodial peer-to-peer atomic swaps between Handshake and Bitcoin.
+            <br>
+            No middlemen. No KYC. Just math.
+        </p>
+        <a href="{{ url_for('auth.login') }}" class="inline-block bg-gfa-blue text-white text-xl px-8 py-4 rounded-lg font-bold hover:bg-blue-600 transition shadow-xl hover:scale-105 transform duration-200">
+            Connect GFAVIP Wallet
+        </a>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto mt-12 text-center">
+    <div class="bg-black/30 p-6 rounded-lg border border-gfa-grey/10">
+        <div class="text-4xl mb-4">🔒</div>
+        <h3 class="text-xl font-bold text-white mb-2">Non-Custodial</h3>
+        <p class="text-gfa-grey">You always hold your private keys. Funds are locked in smart contracts, not our servers.</p>
+    </div>
+    <div class="bg-black/30 p-6 rounded-lg border border-gfa-grey/10">
+        <div class="text-4xl mb-4">🤝</div>
+        <h3 class="text-xl font-bold text-white mb-2">Peer-to-Peer</h3>
+        <p class="text-gfa-grey">Trade directly with other users. We just match the orders and provide the instructions.</p>
+    </div>
+    <div class="bg-black/30 p-6 rounded-lg border border-gfa-grey/10">
+        <div class="text-4xl mb-4">💎</div>
+        <h3 class="text-xl font-bold text-white mb-2">GFAVIP Integration</h3>
+        <p class="text-gfa-grey">Seamless login and reputation tracking using your existing GFAVIP identity.</p>
+    </div>
 </div>
 {% endblock %}
