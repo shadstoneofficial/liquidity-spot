@@ -20,7 +20,7 @@
             <div>
                 <label class="block text-gfa-grey mb-1">Price (BTC per HNS)</label>
                 <div class="relative">
-                    <input type="number" step="0.00000001" name="price" id="priceInput" required class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white" placeholder="{{ '%.8f'|format(current_price) }}" value="{{ '%.8f'|format(current_price) }}">
+                    <input type="text" inputmode="decimal" pattern="^[0-9]*[.,]?[0-9]*$" name="price" id="priceInput" required class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white" placeholder="{{ '%.8f'|format(current_price) }}" value="{{ '%.8f'|format(current_price) }}" oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*?)\..*/g, '$1');">
                     <button type="button" onclick="useMarketPrice()" class="absolute right-2 top-2 text-xs bg-gfa-blue text-white px-2 py-1 rounded hover:bg-blue-600">
                         Use Market: {{ '%.8f'|format(current_price) }}
                     </button>
@@ -57,20 +57,27 @@
                     </thead>
                     <tbody>
                         {% for order in orders %}
-                            {% if order.user_id != session.get('user_id') %}
-                            <tr class="border-b border-gfa-grey/10 hover:bg-white/5">
-                                <td class="p-2 text-sm text-gfa-grey">{{ order.user.username }}</td>
+                            <tr class="border-b border-gfa-grey/10 hover:bg-white/5 {{ 'bg-white/5' if order.user_id == session.get('user_id') else '' }}">
+                                <td class="p-2 text-sm text-gfa-grey">
+                                    {{ order.user.username }}
+                                    {% if order.user_id == session.get('user_id') %}
+                                        <span class="text-xs bg-gfa-grey/20 px-1 rounded ml-1">(You)</span>
+                                    {% endif %}
+                                </td>
                                 <td class="p-2 uppercase {{ 'text-green-400' if order.side == 'buy' else 'text-red-400' }}">{{ order.side }}</td>
                                 <td class="p-2">{{ order.amount_hns }}</td>
                                 <td class="p-2">{{ order.price_btc_per_hns }}</td>
                                 <td class="p-2">{{ order.gems_stake }} 💎</td>
                                 <td class="p-2">
-                                    <form method="POST" action="{{ url_for('main.accept_order', order_id=order.id) }}">
-                                        <button type="submit" class="bg-gfa-blue text-white text-xs px-3 py-1 rounded hover:bg-blue-600">Accept</button>
-                                    </form>
+                                    {% if order.user_id == session.get('user_id') %}
+                                        <span class="text-xs text-gfa-grey cursor-not-allowed opacity-50">Your Order</span>
+                                    {% else %}
+                                        <form method="POST" action="{{ url_for('main.accept_order', order_id=order.id) }}">
+                                            <button type="submit" class="bg-gfa-blue text-white text-xs px-3 py-1 rounded hover:bg-blue-600">Accept</button>
+                                        </form>
+                                    {% endif %}
                                 </td>
                             </tr>
-                            {% endif %}
                         {% endfor %}
                     </tbody>
                 </table>

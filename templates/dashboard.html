@@ -25,6 +25,7 @@
                             <th class="p-2">Amount (HNS)</th>
                             <th class="p-2">Price (BTC)</th>
                             <th class="p-2">Status</th>
+                            <th class="p-2">Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -32,8 +33,15 @@
                             <tr class="border-b border-gfa-grey/10">
                                 <td class="p-2 uppercase {{ 'text-green-400' if order.side == 'buy' else 'text-red-400' }}">{{ order.side }}</td>
                                 <td class="p-2">{{ order.amount_hns }}</td>
-                                <td class="p-2">{{ order.price_btc_per_hns }}</td>
+                                <td class="p-2">{{ '%.8f'|format(order.price_btc_per_hns) }}</td>
                                 <td class="p-2">{{ order.status }}</td>
+                                <td class="p-2">
+                                    {% if order.status == 'open' %}
+                                        <form method="POST" action="{{ url_for('main.cancel_order', order_id=order.id) }}" onsubmit="return confirm('Are you sure you want to cancel this order?');">
+                                            <button type="submit" class="text-red-400 hover:text-red-300 text-xs">Cancel</button>
+                                        </form>
+                                    {% endif %}
+                                </td>
                             </tr>
                         {% endfor %}
                     </tbody>

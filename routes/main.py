@@ -175,6 +175,25 @@ def accept_order(order_id):
     flash('Swap initiated! You are the initiator. Save your secret!', 'success')
     return redirect(url_for('main.swap_details', id=swap.id))
 
+@main_bp.route('/orders/<int:order_id>/cancel', methods=['POST'])
+@login_required
+def cancel_order(order_id):
+    order = Order.query.get_or_404(order_id)
+    
+    if order.user_id != session['user_id']:
+        flash('You can only cancel your own orders.', 'error')
+        return redirect(url_for('main.dashboard'))
+        
+    if order.status != 'open':
+        flash('Cannot cancel order. It may have already been matched or canceled.', 'error')
+        return redirect(url_for('main.dashboard'))
+        
+    order.status = 'canceled'
+    db.session.commit()
+    
+    flash('Order canceled successfully.', 'success')
+    return redirect(url_for('main.dashboard'))
+
 @main_bp.route('/swaps/<int:id>')
 @login_required
 def swap_details(id):
