@@ -4,6 +4,12 @@ from models import db
 
 def create_app(config_name='default'):
     app = Flask(__name__)
+    
+    # Ensure config_name is valid
+    if config_name not in config:
+        print(f"Warning: Config '{config_name}' not found. Using 'default'.", flush=True)
+        config_name = 'default'
+        
     app.config.from_object(config[config_name])
 
     db.init_app(app)

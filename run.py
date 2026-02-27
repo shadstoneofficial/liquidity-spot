@@ -7,6 +7,10 @@ from sqlalchemy import text
 # Create app instance
 app = create_app(os.getenv('FLASK_ENV', 'default'))
 
+# Verify config loading
+if not app.config:
+    print("WARNING: App config is empty!", flush=True)
+
 # Run migrations/create tables on startup
 # This is safe to run on every deploy for simple apps
 try:
