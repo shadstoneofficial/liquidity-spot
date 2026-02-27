@@ -3,9 +3,14 @@ from models import db, User, Order, Swap
 from routes.auth import login_required
 import secrets
 import hashlib
+import requests
 from datetime import datetime
 
 main_bp = Blueprint('main', __name__)
+
+@main_bp.route('/tutorial')
+def tutorial():
+    return render_template('tutorial.html')
 
 @main_bp.route('/')
 def index():
@@ -49,7 +54,19 @@ def orders():
             flash(f'Error creating order: {str(e)}', 'error')
 
     orders = Order.query.filter_by(status='open').order_by(Order.created_at.desc()).all()
-    return render_template('orders.html', orders=orders)
+    
+    # Get current HNS price in BTC
+    try:
+        response = requests.get('https://api.coingecko.com/api/v3/simple/price?ids=handshake&vs_currencies=btc')
+        if response.status_code == 200:
+            current_price = response.json().get('handshake', {}).get('btc', 0.00000050)
+        else:
+            current_price = 0.00000050
+    except Exception as e:
+        print(f"CoinGecko API Error: {e}")
+        current_price = 0.00000050
+        
+    return render_template('orders.html', orders=orders, current_price=current_price)
 
 @main_bp.route('/orders/<int:order_id>/accept', methods=['POST'])
 @login_required

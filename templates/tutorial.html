@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto bg-black/30 p-8 rounded-lg">
+    <h1 class="text-3xl font-bold mb-6 text-gfa-light">Liquidity.spot Tutorial</h1>
+
+    <div class="space-y-8 text-gfa-grey">
+        <section>
+            <h2 class="text-2xl font-bold mb-4 text-white">How it Works</h2>
+            <p>
+                Liquidity.spot facilitates peer-to-peer atomic swaps between Handshake (HNS) and Bitcoin (BTC) using Hash Time-Locked Contracts (HTLCs).
+                The platform acts as a coordinator, matching buyers and sellers and guiding them through the swap process.
+            </p>
+            <p class="mt-2">
+                <strong>Important:</strong> We never hold your funds. You retain custody of your coins throughout the entire process.
+            </p>
+        </section>
+
+        <section>
+            <h2 class="text-2xl font-bold mb-4 text-white">Step-by-Step Guide</h2>
+            
+            <div class="space-y-4">
+                <div class="bg-black/50 p-4 rounded border border-gfa-grey/20">
+                    <h3 class="text-xl font-bold text-white mb-2">1. Connect Wallet</h3>
+                    <p>Log in with your GFAVIP Wallet account. This creates your identity on the platform and syncs your Gems balance (used for staking).</p>
+                </div>
+
+                <div class="bg-black/50 p-4 rounded border border-gfa-grey/20">
+                    <h3 class="text-xl font-bold text-white mb-2">2. Create or Accept an Order</h3>
+                    <p>Go to the <strong>Orders</strong> page to view the order book.</p>
+                    <ul class="list-disc list-inside mt-2 ml-4">
+                        <li><strong>Post an Order:</strong> Specify if you want to Buy or Sell HNS, the amount, and your desired price in BTC.</li>
+                        <li><strong>Accept an Order:</strong> Browse existing offers and click "Accept" to initiate a swap.</li>
+                    </ul>
+                </div>
+
+                <div class="bg-black/50 p-4 rounded border border-gfa-grey/20">
+                    <h3 class="text-xl font-bold text-white mb-2">3. The Swap Process (HTLC)</h3>
+                    <p class="mb-2">Once matched, you will be assigned a role: <strong>Alice</strong> (locks HNS first) or <strong>Bob</strong> (locks BTC second).</p>
+                    
+                    <ol class="list-decimal list-inside space-y-2 ml-4">
+                        <li><strong>Initiation:</strong> A secret key and its hash are generated.</li>
+                        <li><strong>Lock HNS:</strong> Alice locks HNS in her wallet using the hash and a long timelock (48h).</li>
+                        <li><strong>Lock BTC:</strong> Bob verifies Alice's lock, then locks BTC in his wallet using the same hash and a shorter timelock (24h).</li>
+                        <li><strong>Claim BTC:</strong> Alice uses the secret key to claim the locked BTC. This reveals the secret on the blockchain.</li>
+                        <li><strong>Claim HNS:</strong> Bob sees the revealed secret and uses it to claim the locked HNS.</li>
+                    </ol>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2 class="text-2xl font-bold mb-4 text-white">Tools You Need</h2>
+            <ul class="list-disc list-inside ml-4">
+                <li><strong>Handshake Wallet:</strong> Bob Wallet (recommended) or CLI wallet supporting HTLCs.</li>
+                <li><strong>Bitcoin Wallet:</strong> Electrum or Bitcoin Core (must support HTLC/scripting).</li>
+                <li><strong>GFA Gems:</strong> Optional reputation stake to boost order visibility and trust.</li>
+            </ul>
+        </section>
+        
+        <div class="mt-8 p-4 bg-blue-900/20 border border-blue-500/30 rounded text-sm text-blue-200">
+            <strong>Note:</strong> This platform is currently in <strong>Testnet/MVP</strong> mode. Please practice with small amounts or testnet coins first.
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -26,7 +26,8 @@
     <nav class="bg-black/20 p-4">
         <div class="container mx-auto flex justify-between items-center">
             <a href="{{ url_for('main.index') }}" class="text-2xl font-bold text-gfa-light">Liquidity.spot</a>
-            <div>
+            <div class="flex items-center">
+                <a href="{{ url_for('main.tutorial') }}" class="mr-6 hover:text-gfa-light">Tutorial</a>
                 {% if session.get('user_id') %}
                     <a href="{{ url_for('main.dashboard') }}" class="mr-4 hover:text-gfa-light">Dashboard</a>
                     <a href="{{ url_for('main.orders') }}" class="mr-4 hover:text-gfa-light">Orders</a>

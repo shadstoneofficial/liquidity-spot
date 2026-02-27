@@ -19,7 +19,13 @@
             </div>
             <div>
                 <label class="block text-gfa-grey mb-1">Price (BTC per HNS)</label>
-                <input type="number" step="0.00000001" name="price" required class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white" placeholder="0.00000050">
+                <div class="relative">
+                    <input type="number" step="0.00000001" name="price" id="priceInput" required class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white" placeholder="{{ '%.8f'|format(current_price) }}" value="{{ '%.8f'|format(current_price) }}">
+                    <button type="button" onclick="useMarketPrice()" class="absolute right-2 top-2 text-xs bg-gfa-blue text-white px-2 py-1 rounded hover:bg-blue-600">
+                        Use Market: {{ '%.8f'|format(current_price) }}
+                    </button>
+                </div>
+                <p class="text-xs text-gfa-grey mt-1">Source: CoinGecko</p>
             </div>
             <div>
                 <label class="block text-gfa-grey mb-1">Stake Gems (Optional)</label>
@@ -70,4 +76,11 @@
         {% endif %}
     </div>
 </div>
+
+<script>
+    function useMarketPrice() {
+        const price = {{ current_price }};
+        document.getElementById('priceInput').value = price.toFixed(8);
+    }
+</script>
 {% endblock %}
