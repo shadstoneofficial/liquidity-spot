@@ -27,6 +27,10 @@
                 </div>
                 <p class="text-xs text-gfa-grey mt-1">Source: CoinGecko</p>
             </div>
+            <div class="bg-white/5 p-3 rounded border border-gfa-grey/20">
+                <label class="block text-gfa-grey mb-1 text-sm">Total Value (BTC)</label>
+                <div class="text-xl font-bold text-gfa-light" id="totalValue">0.00000000 BTC</div>
+            </div>
             <div>
                 <label class="block text-gfa-grey mb-1">Stake Gems (Optional)</label>
                 <input type="number" name="gems_stake" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white" placeholder="50">
@@ -81,6 +85,17 @@
     function useMarketPrice() {
         const price = {{ current_price }};
         document.getElementById('priceInput').value = price.toFixed(8);
+        calculateTotal();
     }
+
+    function calculateTotal() {
+        const amount = parseFloat(document.querySelector('input[name="amount_hns"]').value) || 0;
+        const price = parseFloat(document.getElementById('priceInput').value) || 0;
+        const total = amount * price;
+        document.getElementById('totalValue').textContent = total.toFixed(8) + ' BTC';
+    }
+
+    document.querySelector('input[name="amount_hns"]').addEventListener('input', calculateTotal);
+    document.getElementById('priceInput').addEventListener('input', calculateTotal);
 </script>
 {% endblock %}
