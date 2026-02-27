@@ -27,7 +27,10 @@
 <body class="bg-gfa-dark text-white min-h-screen flex flex-col">
     <nav class="bg-black/20 p-4">
         <div class="container mx-auto flex justify-between items-center">
-            <a href="{{ url_for('main.index') }}" class="text-2xl font-bold text-gfa-light">Liquidity.spot</a>
+            <a href="{{ url_for('main.index') }}" class="flex items-center gap-3 text-2xl font-bold text-gfa-light hover:opacity-80 transition">
+                <img src="{{ url_for('static', filename='img/liquidity-spot.png') }}" alt="Liquidity.spot Logo" class="h-10 w-auto">
+                Liquidity.spot
+            </a>
             <div class="flex items-center">
                 <a href="{{ url_for('main.tutorial') }}" class="mr-6 hover:text-gfa-light">Tutorial</a>
                 {% if session.get('user_id') %}

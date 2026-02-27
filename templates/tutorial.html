@@ -52,10 +52,34 @@
         <section>
             <h2 class="text-2xl font-bold mb-4 text-white">Tools You Need</h2>
             <ul class="list-disc list-inside ml-4">
-                <li><strong>Handshake Wallet:</strong> Bob Wallet (recommended) or CLI wallet supporting HTLCs.</li>
-                <li><strong>Bitcoin Wallet:</strong> Electrum or Bitcoin Core (must support HTLC/scripting).</li>
+                <li><strong>Handshake Wallet:</strong> <a href="https://bobwallet.io/" class="text-gfa-blue hover:underline" target="_blank"></a>Bob Wallet</a> (recommended) or CLI wallet supporting HTLCs.</li>
+                <li><strong>Bitcoin Wallet:</strong> <a href="https://electrum.org/" class="text-gfa-blue hover:underline" target="_blank">Electrum</a> or Bitcoin Core (must support HTLC/scripting).</li>
                 <li><strong>GFA Gems:</strong> Optional reputation stake to boost order visibility and trust.</li>
             </ul>
+        </section>
+
+        <section>
+            <h2 class="text-2xl font-bold mb-4 text-white">How to Test (Testnet)</h2>
+            <div class="space-y-4">
+                <div class="bg-black/50 p-4 rounded border border-gfa-grey/20">
+                    <h3 class="text-xl font-bold text-white mb-2">1. Get Testnet Coins</h3>
+                    <ul class="list-disc list-inside ml-4">
+                        <li><strong>HNS Regtest/Simnet:</strong> Run a local <code>hsd</code> node or use a faucet if available.</li>
+                        <li><strong>BTC Testnet:</strong> Use a <a href="https://coinfaucet.eu/en/btc-testnet/" class="text-gfa-blue hover:underline" target="_blank">Bitcoin Testnet Faucet</a> to get tBTC.</li>
+                    </ul>
+                </div>
+                <div class="bg-black/50 p-4 rounded border border-gfa-grey/20">
+                    <h3 class="text-xl font-bold text-white mb-2">2. Configure Wallets</h3>
+                    <ul class="list-disc list-inside ml-4">
+                        <li><strong>Bob Wallet:</strong> Go to Settings &gt; Network and switch to Testnet/Simnet.</li>
+                        <li><strong>Electrum:</strong> Start with <code>--testnet</code> flag or download the Testnet version.</li>
+                    </ul>
+                </div>
+                <div class="bg-black/50 p-4 rounded border border-gfa-grey/20">
+                    <h3 class="text-xl font-bold text-white mb-2">3. Perform a Swap</h3>
+                    <p>Use the generated <strong>Secret Hash</strong> and <strong>Timelocks</strong> from this platform to create HTLC transactions in your wallets manually.</p>
+                </div>
+            </div>
         </section>
         
         <div class="mt-8 p-4 bg-blue-900/20 border border-blue-500/30 rounded text-sm text-blue-200">
