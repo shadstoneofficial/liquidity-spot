@@ -64,9 +64,12 @@
                     <h3 class="text-xl font-bold text-white mb-2">3. The Swap Process (HTLC)</h3>
                     <p class="mb-2">Once matched, the platform automatically assigns you a role based on order sides:</p>
                     <ul class="list-disc list-inside mb-4 ml-4">
-                        <li><strong>Alice:</strong> Locks HNS first (longer timelock – usually the seller of HNS)</li>
-                        <li><strong>Bob:</strong> Locks BTC second (shorter timelock – usually the buyer of HNS)</li>
+                        <li><strong>Alice:</strong> ALWAYS the <strong>Seller of HNS</strong> (and Buyer of BTC). She locks HNS first.</li>
+                        <li><strong>Bob:</strong> ALWAYS the <strong>Buyer of HNS</strong> (and Seller of BTC). He locks BTC second.</li>
                     </ul>
+                    <p class="text-sm text-gfa-grey mb-4 ml-4 italic">
+                        Note: Even if you create the order ("Maker"), your role depends on <em>what</em> you are trading. If you create a "Buy HNS" order, you will be Bob.
+                    </p>
                     
                     <ol class="list-decimal list-inside space-y-2 ml-4">
                         <li><strong>Initiation:</strong> The platform securely generates a random secret key and shows only its hash to both parties.</li>
