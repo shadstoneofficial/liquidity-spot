@@ -8,12 +8,17 @@
         <section>
             <h2 class="text-2xl font-bold mb-4 text-white">Meet Alice & Bob – Your Guides to Trustless HNS ↔ BTC Swaps</h2>
             <div class="bg-black/50 p-6 rounded border border-gfa-grey/20">
-                <p class="mb-4">
-                    In the world of Handshake, <strong>Bob</strong> is the friendly, reliable wallet everyone knows — the one that helps you own your names and your coins without middlemen.
-                </p>
-                <p class="mb-4">
-                    Now imagine <strong>Alice</strong>, a domain owner who wants to trade some of her HNS for BTC privately and securely. She posts her offer on Liquidity.spot.
-                </p>
+                <div class="flex flex-col md:flex-row gap-6 mb-6 items-center">
+                    <img src="{{ url_for('static', filename='img/alice-and-bob4.png') }}" alt="Alice and Bob Visual Guide" class="w-full md:w-1/3 h-auto rounded-lg shadow-lg border border-gfa-grey/20">
+                    <div class="flex-grow">
+                        <p class="mb-4">
+                            In the world of Handshake, <strong>Bob</strong> is the friendly, reliable wallet everyone knows — the one that helps you own your names and your coins without middlemen.
+                        </p>
+                        <p class="mb-4">
+                            Now imagine <strong>Alice</strong>, a domain owner who wants to trade some of her HNS for BTC privately and securely. She posts her offer on Liquidity.spot.
+                        </p>
+                    </div>
+                </div>
                 <p class="mb-4">
                     Along comes Bob — another Handshake user who likes her price and accepts the trade. The platform assigns roles automatically:
                 </p>

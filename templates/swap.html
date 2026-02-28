@@ -47,41 +47,69 @@
     </div>
 
     <!-- Technical Params -->
-    <div class="bg-black/50 p-6 rounded-lg mb-8 border border-gfa-grey/20">
-        <h3 class="text-xl font-bold mb-4 text-white">Technical Parameters</h3>
-        
-        <div class="mb-4">
-            <p class="text-sm text-gfa-grey mb-1">Secret Hash (SHA256)</p>
-            <code class="block bg-black/80 p-3 rounded text-green-400 font-mono break-all">{{ swap.secret_hash }}</code>
+    {% if swap.status == 'pending_secret' %}
+        <div class="bg-black/50 p-6 rounded-lg mb-8 border border-yellow-500/30">
+            <h3 class="text-xl font-bold mb-4 text-yellow-400">Action Required</h3>
+            
+            {% if user.id == swap.role_alice_user_id %}
+                <p class="text-white mb-4">
+                    You are <strong>Alice</strong>. You must generate the secret to initiate the swap safely.
+                </p>
+                <form method="POST" action="{{ url_for('main.initiate_swap', id=swap.id) }}">
+                    <button type="submit" class="bg-gfa-blue text-white font-bold py-3 px-6 rounded hover:bg-blue-600 transition w-full md:w-auto">
+                        Generate Secret & Initiate Swap
+                    </button>
+                </form>
+            {% else %}
+                <p class="text-white">
+                    Waiting for <strong>Alice</strong> (the other party) to generate the secret and initiate the swap.
+                </p>
+                <p class="text-gfa-grey text-sm mt-2">
+                    Please refresh this page periodically.
+                </p>
+            {% endif %}
         </div>
+    {% else %}
+        <div class="bg-black/50 p-6 rounded-lg mb-8 border border-gfa-grey/20">
+            <h3 class="text-xl font-bold mb-4 text-white">Technical Parameters</h3>
+            
+            <div class="mb-4">
+                <p class="text-sm text-gfa-grey mb-1">Secret Hash (SHA256)</p>
+                <code class="block bg-black/80 p-3 rounded text-green-400 font-mono break-all">{{ swap.secret_hash }}</code>
+            </div>
 
-        {% if secret %}
-        <div class="mb-4">
-            <p class="text-sm text-gfa-grey mb-1">Secret (Keep Safe!)</p>
-            <div class="flex items-center gap-2">
-                <code class="block bg-red-900/30 p-3 rounded text-red-300 font-mono break-all flex-grow">{{ secret }}</code>
-                <span class="text-xs text-red-400">Only visible to you</span>
+            {% if secret %}
+            <div class="mb-4">
+                <p class="text-sm text-gfa-grey mb-1">Secret (Keep Safe!)</p>
+                <div class="flex items-center gap-2">
+                    <code class="block bg-red-900/30 p-3 rounded text-red-300 font-mono break-all flex-grow">{{ secret }}</code>
+                    <span class="text-xs text-red-400">Only visible to you</span>
+                </div>
             </div>
-        </div>
-        {% endif %}
+            {% endif %}
 
-        <div class="grid grid-cols-2 gap-4">
-            <div>
-                <p class="text-sm text-gfa-grey">Alice Timelock</p>
-                <p class="font-mono">~{{ swap.timelock_alice_sec // 600 }} blocks ({{ swap.timelock_alice_sec / 3600 }}h)</p>
-            </div>
-            <div>
-                <p class="text-sm text-gfa-grey">Bob Timelock</p>
-                <p class="font-mono">~{{ swap.timelock_bob_sec // 600 }} blocks ({{ swap.timelock_bob_sec / 3600 }}h)</p>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <p class="text-sm text-gfa-grey">Alice Timelock</p>
+                    <p class="font-mono">~{{ swap.timelock_alice_sec // 600 }} blocks ({{ swap.timelock_alice_sec / 3600 }}h)</p>
+                </div>
+                <div>
+                    <p class="text-sm text-gfa-grey">Bob Timelock</p>
+                    <p class="font-mono">~{{ swap.timelock_bob_sec // 600 }} blocks ({{ swap.timelock_bob_sec / 3600 }}h)</p>
+                </div>
             </div>
         </div>
-    </div>
+    {% endif %}
 
     <!-- Instructions -->
     <div class="space-y-6">
         <h3 class="text-2xl font-bold text-white">Step-by-Step Instructions</h3>
         
-        {% if user.id == swap.role_alice_user_id %}
+        {% if swap.status == 'pending_secret' %}
+             <div class="bg-black/30 p-4 rounded text-gfa-grey italic">
+                 Instructions will appear once the swap is initiated by Alice.
+             </div>
+        {% elif user.id == swap.role_alice_user_id %}
             <!-- Alice Instructions -->
             <ol class="list-decimal list-inside space-y-4 text-gfa-grey">
                 <li class="pl-2">
