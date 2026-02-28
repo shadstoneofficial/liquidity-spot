@@ -31,7 +31,16 @@
                 <img src="{{ url_for('static', filename='img/liquidity-spot.png') }}" alt="Liquidity.spot Logo" class="h-10 w-auto">
                 Liquidity.spot
             </a>
-            <div class="flex items-center">
+            
+            <!-- Mobile Menu Button -->
+            <button id="mobile-menu-btn" class="md:hidden text-gfa-light focus:outline-none">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                </svg>
+            </button>
+
+            <!-- Desktop Menu -->
+            <div class="hidden md:flex items-center">
                 <a href="{{ url_for('main.tutorial') }}" class="mr-6 hover:text-gfa-light">Tutorial</a>
                 {% if session.get('user_id') %}
                     <a href="{{ url_for('main.dashboard') }}" class="mr-4 hover:text-gfa-light">Dashboard</a>
@@ -45,7 +54,31 @@
                 {% endif %}
             </div>
         </div>
+
+        <!-- Mobile Menu (Hidden by default) -->
+        <div id="mobile-menu" class="hidden md:hidden mt-4 bg-black/90 p-4 rounded-lg border border-gfa-grey/20">
+            <div class="flex flex-col space-y-4">
+                <a href="{{ url_for('main.tutorial') }}" class="hover:text-gfa-light">Tutorial</a>
+                {% if session.get('user_id') %}
+                    <a href="{{ url_for('main.dashboard') }}" class="hover:text-gfa-light">Dashboard</a>
+                    <a href="{{ url_for('main.orders') }}" class="hover:text-gfa-light">Orders</a>
+                    {% if session.get('tier') == 'team' %}
+                        <a href="{{ url_for('admin.credit') }}" class="hover:text-gfa-light">Admin</a>
+                    {% endif %}
+                    <a href="{{ url_for('auth.logout') }}" class="text-red-400 hover:text-red-300">Logout</a>
+                {% else %}
+                    <a href="{{ url_for('auth.login') }}" class="bg-gfa-light text-gfa-dark px-4 py-2 rounded font-bold hover:bg-white transition text-center">Login with GFAVIP</a>
+                {% endif %}
+            </div>
+        </div>
     </nav>
+
+    <script>
+        document.getElementById('mobile-menu-btn').addEventListener('click', function() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('hidden');
+        });
+    </script>
 
     <main class="container mx-auto flex-grow p-4">
         {% with messages = get_flashed_messages(with_categories=true) %}

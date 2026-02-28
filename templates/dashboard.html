@@ -18,24 +18,24 @@
         <h2 class="text-2xl font-bold mb-4 text-gfa-light">My Active Orders</h2>
         {% if orders %}
             <div class="overflow-x-auto">
-                <table class="w-full text-left">
+                <table class="w-full text-left min-w-[600px]">
                     <thead>
                         <tr class="border-b border-gfa-grey/30">
-                            <th class="p-2">Side</th>
-                            <th class="p-2">Amount (HNS)</th>
-                            <th class="p-2">Price (BTC)</th>
-                            <th class="p-2">Status</th>
-                            <th class="p-2">Action</th>
+                            <th class="p-2 whitespace-nowrap">Side</th>
+                            <th class="p-2 whitespace-nowrap">Amount (HNS)</th>
+                            <th class="p-2 whitespace-nowrap">Price (BTC)</th>
+                            <th class="p-2 whitespace-nowrap">Status</th>
+                            <th class="p-2 whitespace-nowrap">Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for order in orders %}
                             <tr class="border-b border-gfa-grey/10">
-                                <td class="p-2 uppercase {{ 'text-green-400' if order.side == 'buy' else 'text-red-400' }}">{{ order.side }}</td>
-                                <td class="p-2">{{ order.amount_hns }}</td>
-                                <td class="p-2">{{ '%.8f'|format(order.price_btc_per_hns) }}</td>
-                                <td class="p-2">{{ order.status }}</td>
-                                <td class="p-2">
+                                <td class="p-2 uppercase {{ 'text-green-400' if order.side == 'buy' else 'text-red-400' }} whitespace-nowrap">{{ order.side }}</td>
+                                <td class="p-2 whitespace-nowrap">{{ order.amount_hns }}</td>
+                                <td class="p-2 whitespace-nowrap">{{ '%.8f'|format(order.price_btc_per_hns) }}</td>
+                                <td class="p-2 whitespace-nowrap">{{ order.status }}</td>
+                                <td class="p-2 whitespace-nowrap">
                                     {% if order.status == 'open' %}
                                         <form method="POST" action="{{ url_for('main.cancel_order', order_id=order.id) }}" onsubmit="return confirm('Are you sure you want to cancel this order?');">
                                             <button type="submit" class="text-red-400 hover:text-red-300 text-xs">Cancel</button>
@@ -57,30 +57,30 @@
         <h2 class="text-2xl font-bold mb-4 text-gfa-light">My Swaps</h2>
         {% if swaps %}
             <div class="overflow-x-auto">
-                <table class="w-full text-left">
+                <table class="w-full text-left min-w-[700px]">
                     <thead>
                         <tr class="border-b border-gfa-grey/30">
-                            <th class="p-2">ID</th>
-                            <th class="p-2">Role</th>
-                            <th class="p-2">Status</th>
-                            <th class="p-2">Created</th>
-                            <th class="p-2">Action</th>
+                            <th class="p-2 whitespace-nowrap">ID</th>
+                            <th class="p-2 whitespace-nowrap">Role</th>
+                            <th class="p-2 whitespace-nowrap">Status</th>
+                            <th class="p-2 whitespace-nowrap">Created</th>
+                            <th class="p-2 whitespace-nowrap">Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for swap in swaps %}
                             <tr class="border-b border-gfa-grey/10 hover:bg-white/5">
-                                <td class="p-2">#{{ swap.id }}</td>
-                                <td class="p-2">
+                                <td class="p-2 whitespace-nowrap">#{{ swap.id }}</td>
+                                <td class="p-2 whitespace-nowrap">
                                     {% if swap.matcher_id == user.id %}
                                         Matcher (Taker)
                                     {% else %}
                                         Order Creator (Maker)
                                     {% endif %}
                                 </td>
-                                <td class="p-2 uppercase">{{ swap.status }}</td>
-                                <td class="p-2">{{ swap.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                                <td class="p-2">
+                                <td class="p-2 uppercase whitespace-nowrap">{{ swap.status }}</td>
+                                <td class="p-2 whitespace-nowrap">{{ swap.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td class="p-2 whitespace-nowrap">
                                     <a href="{{ url_for('main.swap_details', id=swap.id) }}" class="text-gfa-blue hover:text-blue-300">View Details</a>
                                 </td>
                             </tr>

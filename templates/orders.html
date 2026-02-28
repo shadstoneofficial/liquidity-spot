@@ -44,21 +44,21 @@
         <h2 class="text-2xl font-bold mb-4 text-gfa-light">Order Book</h2>
         {% if orders %}
             <div class="overflow-x-auto">
-                <table class="w-full text-left">
+                <table class="w-full text-left min-w-[600px]">
                     <thead>
                         <tr class="border-b border-gfa-grey/30">
-                            <th class="p-2">User</th>
-                            <th class="p-2">Side</th>
-                            <th class="p-2">Amount (HNS)</th>
-                            <th class="p-2">Price (BTC)</th>
-                            <th class="p-2">Stake</th>
-                            <th class="p-2">Action</th>
+                            <th class="p-2 whitespace-nowrap">User</th>
+                            <th class="p-2 whitespace-nowrap">Side</th>
+                            <th class="p-2 whitespace-nowrap">Amount (HNS)</th>
+                            <th class="p-2 whitespace-nowrap">Price (BTC)</th>
+                            <th class="p-2 whitespace-nowrap">Stake</th>
+                            <th class="p-2 whitespace-nowrap">Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for order in orders %}
                             <tr class="border-b border-gfa-grey/10 hover:bg-white/5 {{ 'bg-white/5' if order.user_id == session.get('user_id') else '' }}">
-                                <td class="p-2 text-sm text-gfa-grey">
+                                <td class="p-2 text-sm text-gfa-grey whitespace-nowrap">
                                     {{ order.user.username }}
                                     {% if order.user_id == session.get('user_id') %}
                                         <span class="text-xs bg-gfa-grey/20 px-1 rounded ml-1">(You)</span>
