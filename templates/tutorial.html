@@ -29,6 +29,23 @@
                     Welcome to Liquidity.spot — where Alice and Bob trade freely in the spirit of Handshake.
                 </p>
             </div>
+
+            <div class="mt-6 bg-black/50 p-6 rounded border border-gfa-grey/20">
+                <h3 class="text-xl font-bold text-white mb-4">Alternative Scenario: Bob Wants to Buy HNS</h3>
+                <p class="mb-4">
+                    What if Bob initiates the trade? Let's say Bob has BTC and wants to buy HNS.
+                </p>
+                <ul class="list-disc list-inside mb-4 ml-4 space-y-1">
+                    <li>Bob creates a "Buy HNS" order on the order book.</li>
+                    <li>Alice (who has HNS) accepts Bob's order.</li>
+                    <li>Even though Bob created the order, <strong>Alice is still the HNS Seller</strong>.</li>
+                    <li>The protocol remains the same: <strong>Alice locks HNS first</strong>.</li>
+                    <li>Bob waits for Alice's lock, then locks his BTC.</li>
+                </ul>
+                <p class="text-sm text-gfa-grey italic">
+                    Key Takeaway: The person <strong>selling HNS</strong> always locks first (Alice), regardless of who posted the order.
+                </p>
+            </div>
         </section>
 
         <section>
