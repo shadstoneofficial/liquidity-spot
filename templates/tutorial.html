@@ -12,7 +12,7 @@
                 The platform acts as a coordinator, matching buyers and sellers and guiding them through the swap process.
             </p>
             <p class="mt-2">
-                <strong>Important:</strong> We never hold your funds. You retain custody of your coins throughout the entire process.
+                <strong>Important:</strong> We never hold your funds. You retain full custody of your coins throughout the entire process.
             </p>
         </section>
 
@@ -29,17 +29,21 @@
                     <h3 class="text-xl font-bold text-white mb-2">2. Create or Accept an Order</h3>
                     <p>Go to the <strong>Orders</strong> page to view the order book.</p>
                     <ul class="list-disc list-inside mt-2 ml-4">
-                        <li><strong>Post an Order:</strong> Specify if you want to Buy or Sell HNS, the amount, and your desired price in BTC.</li>
+                        <li><strong>Post an Order:</strong> Specify if you want to Buy or Sell HNS, the amount, your desired price in BTC, and (optionally) stake Gems to show you're serious.</li>
                         <li><strong>Accept an Order:</strong> Browse existing offers and click "Accept" to initiate a swap.</li>
                     </ul>
                 </div>
 
                 <div class="bg-black/50 p-4 rounded border border-gfa-grey/20">
                     <h3 class="text-xl font-bold text-white mb-2">3. The Swap Process (HTLC)</h3>
-                    <p class="mb-2">Once matched, you will be assigned a role: <strong>Alice</strong> (locks HNS first) or <strong>Bob</strong> (locks BTC second).</p>
+                    <p class="mb-2">Once matched, the platform automatically assigns you a role based on order sides:</p>
+                    <ul class="list-disc list-inside mb-4 ml-4">
+                        <li><strong>Alice:</strong> Locks HNS first (longer timelock – usually the seller of HNS)</li>
+                        <li><strong>Bob:</strong> Locks BTC second (shorter timelock – usually the buyer of HNS)</li>
+                    </ul>
                     
                     <ol class="list-decimal list-inside space-y-2 ml-4">
-                        <li><strong>Initiation:</strong> A secret key and its hash are generated.</li>
+                        <li><strong>Initiation:</strong> The platform securely generates a random secret key and shows only its hash to both parties.</li>
                         <li><strong>Lock HNS:</strong> Alice locks HNS in her wallet using the hash and a long timelock (48h).</li>
                         <li><strong>Lock BTC:</strong> Bob verifies Alice's lock, then locks BTC in his wallet using the same hash and a shorter timelock (24h).</li>
                         <li><strong>Claim BTC:</strong> Alice uses the secret key to claim the locked BTC. This reveals the secret on the blockchain.</li>
@@ -52,9 +56,9 @@
         <section>
             <h2 class="text-2xl font-bold mb-4 text-white">Tools You Need</h2>
             <ul class="list-disc list-inside ml-4">
-                <li><strong>Handshake Wallet:</strong> <a href="https://bobwallet.io/" class="text-gfa-blue hover:underline" target="_blank"></a>Bob Wallet</a> (recommended) or CLI wallet supporting HTLCs.</li>
+                <li><strong>Handshake Wallet:</strong> <a href="https://bobwallet.io/" class="text-gfa-blue hover:underline" target="_blank">Bob Wallet</a> (recommended) or CLI wallet supporting HTLCs.</li>
                 <li><strong>Bitcoin Wallet:</strong> <a href="https://electrum.org/" class="text-gfa-blue hover:underline" target="_blank">Electrum</a> or Bitcoin Core (must support HTLC/scripting).</li>
-                <li><strong>GFA Gems:</strong> Optional reputation stake to boost order visibility and trust.</li>
+                <li><strong>GFA Gems:</strong> Optional reputation stake to boost order visibility and trust. (Future versions will include escrow-like penalties for cancellations.)</li>
             </ul>
         </section>
 
@@ -64,26 +68,26 @@
                 <div class="bg-black/50 p-4 rounded border border-gfa-grey/20">
                     <h3 class="text-xl font-bold text-white mb-2">1. Get Testnet Coins</h3>
                     <ul class="list-disc list-inside ml-4">
-                        <li><strong>HNS Regtest/Simnet:</strong> Run a local <code>hsd</code> node or use a faucet if available.</li>
-                        <li><strong>BTC Testnet:</strong> Use a <a href="https://coinfaucet.eu/en/btc-testnet/" class="text-gfa-blue hover:underline" target="_blank">Bitcoin Testnet Faucet</a> to get tBTC.</li>
+                        <li><strong>BTC Testnet:</strong> Use public Bitcoin Testnet faucets.</li>
+                        <li><strong>HNS Testnet:</strong> Public faucets are limited. For reliable testing, run a local <code>hsd</code> regtest/simnet node (lightweight mode possible) or coordinate with another tester.</li>
                     </ul>
                 </div>
                 <div class="bg-black/50 p-4 rounded border border-gfa-grey/20">
                     <h3 class="text-xl font-bold text-white mb-2">2. Configure Wallets</h3>
                     <ul class="list-disc list-inside ml-4">
-                        <li><strong>Bob Wallet:</strong> Go to Settings &gt; Network and switch to Testnet/Simnet.</li>
-                        <li><strong>Electrum:</strong> Start with <code>--testnet</code> flag or download the Testnet version.</li>
+                        <li><strong>Bob Wallet:</strong> Settings &gt; Network &rarr; switch to Testnet/Simnet.</li>
+                        <li><strong>Electrum:</strong> Use <code>--testnet</code> flag or Testnet version.</li>
                     </ul>
                 </div>
                 <div class="bg-black/50 p-4 rounded border border-gfa-grey/20">
                     <h3 class="text-xl font-bold text-white mb-2">3. Perform a Swap</h3>
-                    <p>Use the generated <strong>Secret Hash</strong> and <strong>Timelocks</strong> from this platform to create HTLC transactions in your wallets manually.</p>
+                    <p>Use the Secret Hash, Timelocks, and role instructions generated by the platform to create HTLC transactions manually in your wallets.</p>
                 </div>
             </div>
         </section>
         
         <div class="mt-8 p-4 bg-blue-900/20 border border-blue-500/30 rounded text-sm text-blue-200">
-            <strong>Note:</strong> This platform is currently in <strong>Testnet/MVP</strong> mode. Please practice with small amounts or testnet coins first.
+            <strong>Note:</strong> This is Testnet/MVP mode. Practice with small amounts or testnet coins only.
         </div>
     </div>
 </div>
