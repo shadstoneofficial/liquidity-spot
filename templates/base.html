@@ -47,8 +47,12 @@
                 {% endif %}
                 <a href="{{ url_for('main.p2p') }}" class="mr-6 hover:text-gfa-light">P2P</a>
                 {% if session.get('user_id') %}
-                    <a href="{{ url_for('main.orders') }}" class="mr-4 hover:text-gfa-light">Atomic Swaps</a>
-                    <span class="mr-4 text-[10px] uppercase tracking-wide bg-yellow-500/20 text-yellow-200 px-2 py-1 rounded">Experimental</span>
+                    <div class="group relative mr-4">
+                        <a href="{{ url_for('main.orders') }}" class="hover:text-gfa-light">Atomic Swaps</a>
+                        <div class="pointer-events-none absolute left-1/2 top-full z-50 mt-2 hidden w-56 -translate-x-1/2 rounded-lg border border-yellow-500/30 bg-black/95 p-3 text-xs text-yellow-100 shadow-xl group-hover:block">
+                            Experimental HTLC testing flow. Use for learning and test runs, not broad production mainnet use.
+                        </div>
+                    </div>
                     <a href="{{ url_for('main.tutorial') }}" class="mr-6 hover:text-gfa-light">Tutorial</a>
                     {% if session.get('tier') == 'team' %}
                         <a href="{{ url_for('admin.credit') }}" class="mr-4 hover:text-gfa-light">Admin</a>
