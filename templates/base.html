@@ -40,15 +40,24 @@
             </button>
 
             <!-- Desktop Menu -->
-            <div class="hidden md:flex items-center">
+            <div class="hidden md:flex items-center gap-6">
                 {% if session.get('user_id') %}
-                    <a href="{{ url_for('main.profile') }}" class="mr-6 text-sm text-gfa-grey whitespace-nowrap hover:text-gfa-light">
-                        Welcome {{ session.get('username', 'user') }}
-                        {% if current_user %}
-                            <span class="ml-2 text-gfa-light">{{ current_user.gems_balance }} 💎</span>
-                        {% endif %}
-                    </a>
-                    <div class="group relative mr-6">
+                    <a href="{{ url_for('main.dashboard') }}" class="hover:text-gfa-light">Dashboard</a>
+                {% endif %}
+                <a href="{{ url_for('main.p2p') }}" class="hover:text-gfa-light">P2P</a>
+                {% if session.get('user_id') %}
+                    <div class="group relative">
+                        <a href="{{ url_for('main.orders') }}" class="hover:text-gfa-light">Atomic Swaps</a>
+                        <div class="pointer-events-none absolute left-1/2 top-full z-50 mt-2 hidden w-56 -translate-x-1/2 rounded-lg border border-yellow-500/30 bg-black/95 p-3 text-xs text-yellow-100 shadow-xl group-hover:block">
+                            Experimental HTLC testing flow. Use for learning and test runs, not broad production mainnet use.
+                        </div>
+                    </div>
+                    <a href="{{ url_for('main.tutorial') }}" class="hover:text-gfa-light">Tutorial</a>
+                    {% if session.get('tier') == 'team' %}
+                        <a href="{{ url_for('admin.credit') }}" class="hover:text-gfa-light">Admin</a>
+                    {% endif %}
+                    <div class="ml-4 flex items-center gap-4">
+                    <div class="group relative">
                         <button type="button" class="relative text-gfa-grey hover:text-gfa-light focus:outline-none" aria-label="Notifications">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0a3 3 0 11-6 0m6 0H9"></path>
@@ -75,25 +84,27 @@
                             {% endif %}
                         </div>
                     </div>
-                    <a href="{{ url_for('main.dashboard') }}" class="mr-4 hover:text-gfa-light">Dashboard</a>
-                    <a href="{{ url_for('main.profile') }}" class="mr-4 hover:text-gfa-light">Profile</a>
-                    <a href="{{ url_for('main.activity') }}" class="mr-4 hover:text-gfa-light">Activity</a>
-                {% endif %}
-                <a href="{{ url_for('main.p2p') }}" class="mr-6 hover:text-gfa-light">P2P</a>
-                {% if session.get('user_id') %}
-                    <div class="group relative mr-4">
-                        <a href="{{ url_for('main.orders') }}" class="hover:text-gfa-light">Atomic Swaps</a>
-                        <div class="pointer-events-none absolute left-1/2 top-full z-50 mt-2 hidden w-56 -translate-x-1/2 rounded-lg border border-yellow-500/30 bg-black/95 p-3 text-xs text-yellow-100 shadow-xl group-hover:block">
-                            Experimental HTLC testing flow. Use for learning and test runs, not broad production mainnet use.
+                    <details class="relative">
+                        <summary class="list-none cursor-pointer rounded-lg border border-gfa-grey/20 bg-black/20 px-3 py-2 text-sm text-gfa-grey hover:text-gfa-light hover:border-gfa-grey/40 transition">
+                            <span>Welcome {{ session.get('username', 'user') }}</span>
+                            {% if current_user %}
+                                <span class="ml-2 text-gfa-light">{{ current_user.gems_balance }} 💎</span>
+                            {% endif %}
+                            <span class="ml-2 text-xs">▾</span>
+                        </summary>
+                        <div class="absolute right-0 top-full z-50 mt-2 w-56 rounded-lg border border-gfa-grey/20 bg-black/95 p-2 text-sm text-gfa-grey shadow-xl">
+                            <a href="{{ url_for('main.profile') }}" class="block rounded px-3 py-2 hover:bg-white/5 hover:text-gfa-light">View Profile</a>
+                            <a href="{{ url_for('main.activity') }}" class="block rounded px-3 py-2 hover:bg-white/5 hover:text-gfa-light">Activity</a>
+                            <a href="{{ url_for('main.dashboard') }}" class="block rounded px-3 py-2 hover:bg-white/5 hover:text-gfa-light">Dashboard</a>
+                            {% if session.get('tier') == 'team' %}
+                                <a href="{{ url_for('admin.credit') }}" class="block rounded px-3 py-2 hover:bg-white/5 hover:text-gfa-light">Admin</a>
+                            {% endif %}
+                            <a href="{{ url_for('auth.logout') }}" class="block rounded px-3 py-2 text-red-400 hover:bg-white/5 hover:text-red-300">Logout</a>
                         </div>
+                    </details>
                     </div>
-                    <a href="{{ url_for('main.tutorial') }}" class="mr-6 hover:text-gfa-light">Tutorial</a>
-                    {% if session.get('tier') == 'team' %}
-                        <a href="{{ url_for('admin.credit') }}" class="mr-4 hover:text-gfa-light">Admin</a>
-                    {% endif %}
-                    <a href="{{ url_for('auth.logout') }}" class="text-red-400 hover:text-red-300">Logout</a>
                 {% else %}
-                    <a href="{{ url_for('main.tutorial') }}" class="mr-6 hover:text-gfa-light">Tutorial</a>
+                    <a href="{{ url_for('main.tutorial') }}" class="hover:text-gfa-light">Tutorial</a>
                     <a href="{{ url_for('auth.login') }}" class="bg-gfa-light text-gfa-dark px-4 py-2 rounded font-bold hover:bg-white transition">Login with GFAVIP</a>
                 {% endif %}
             </div>
