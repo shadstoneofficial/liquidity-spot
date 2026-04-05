@@ -2,6 +2,12 @@
 
 {% block content %}
 <div class="max-w-4xl mx-auto bg-black/30 p-8 rounded-lg">
+    <div class="mb-6 bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-4">
+        <p class="font-bold text-yellow-200">Experimental Trustless Flow</p>
+        <p class="text-sm text-yellow-100">
+            This screen is part of the HTLC testing path. It is kept for experimentation and learning while Human P2P coordination becomes the primary product direction.
+        </p>
+    </div>
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-3xl font-bold text-gfa-light">Swap #{{ swap.id }}</h1>
         <span class="bg-blue-500/20 text-blue-300 px-3 py-1 rounded uppercase text-sm font-bold">{{ swap.status }}</span>
@@ -36,10 +42,10 @@
             </h3>
             <div class="bg-black/50 p-4 rounded border border-gfa-grey/20">
                 {% if user.id == swap.role_alice_user_id %}
-                    <p class="text-lg font-bold text-green-400 mb-2">You are Alice (HNS Holder)</p>
+                    <p class="text-lg font-bold text-green-400 mb-2">You are Alice (HNS Seller)</p>
                     <p class="text-sm text-gfa-grey">You must lock HNS first.</p>
                 {% else %}
-                    <p class="text-lg font-bold text-blue-400 mb-2">You are Bob (BTC Holder)</p>
+                    <p class="text-lg font-bold text-blue-400 mb-2">You are Bob (HNS Buyer / BTC Seller)</p>
                     <p class="text-sm text-gfa-grey">You wait for Alice to lock HNS, then you lock BTC.</p>
                 {% endif %}
             </div>
@@ -169,7 +175,7 @@
     </div>
     
     <div class="mt-8 p-4 bg-red-900/20 border border-red-500/30 rounded text-sm text-red-200">
-        <strong>Disclaimer:</strong> This is a testnet MVP. Ensure you are using Testnet coins (HNS Regtest/Simnet or BTC Testnet) if applicable, or small amounts. Verify all parameters in your wallet before broadcasting.
+        <strong>Disclaimer:</strong> This trustless swap screen remains experimental. Use testnet coins or very small learning amounts only. Verify all parameters in your wallet before broadcasting, and do not treat this flow as fully hardened for broad mainnet use.
     </div>
 </div>
 {% endblock %}

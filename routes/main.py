@@ -4,13 +4,16 @@ from routes.auth import login_required
 import secrets
 import hashlib
 import requests
-from datetime import datetime
 
 main_bp = Blueprint('main', __name__)
 
 @main_bp.route('/tutorial')
 def tutorial():
     return render_template('tutorial.html')
+
+@main_bp.route('/p2p')
+def p2p():
+    return render_template('p2p.html')
 
 @main_bp.route('/')
 def index():

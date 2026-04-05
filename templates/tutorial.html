@@ -54,13 +54,16 @@
         </section>
 
         <section>
-            <h2 class="text-2xl font-bold mb-4 text-white">How it Works</h2>
+            <h2 class="text-2xl font-bold mb-4 text-white">How it Works Today</h2>
             <p>
-                Liquidity.spot facilitates peer-to-peer atomic swaps between Handshake (HNS) and Bitcoin (BTC) using Hash Time-Locked Contracts (HTLCs).
-                The platform acts as a coordinator, matching buyers and sellers and guiding them through the swap process.
+                Liquidity.spot is currently evolving into a non-custodial P2P coordination platform for Handshake (HNS) and Bitcoin (BTC) trades.
+                The platform helps buyers and sellers find each other, understand their roles, and follow a shared process without taking custody of funds.
             </p>
             <p class="mt-2">
                 <strong>Important:</strong> We never hold your funds. You retain full custody of your coins throughout the entire process.
+            </p>
+            <p class="mt-2 text-sm text-yellow-200">
+                The trustless HTLC flow below remains available as an experimental testing feature and should not yet be treated as mainnet-ready.
             </p>
         </section>
 
@@ -82,8 +85,11 @@
                     </ul>
                 </div>
 
-                <div class="bg-black/50 p-4 rounded border border-gfa-grey/20">
-                    <h3 class="text-xl font-bold text-white mb-2">3. The Swap Process (HTLC)</h3>
+                <div class="bg-black/50 p-4 rounded border border-yellow-500/30">
+                    <div class="inline-flex items-center gap-2 bg-yellow-500/20 text-yellow-200 text-xs font-bold px-2 py-1 rounded mb-3">
+                        Testing Only
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-2">3. Experimental Trustless Swap Process (HTLC)</h3>
                     <p class="mb-2">Once matched, the platform automatically assigns you a role based on order sides:</p>
                     <ul class="list-disc list-inside mb-4 ml-4">
                         <li><strong>Alice:</strong> ALWAYS the <strong>Seller of HNS</strong> (and Buyer of BTC). She locks HNS first.</li>
@@ -137,8 +143,8 @@
             </div>
         </section>
         
-        <div class="mt-8 p-4 bg-blue-900/20 border border-blue-500/30 rounded text-sm text-blue-200">
-            <strong>Note:</strong> This is Testnet/MVP mode. Practice with small amounts or testnet coins only.
+        <div class="mt-8 p-4 bg-yellow-900/20 border border-yellow-500/30 rounded text-sm text-yellow-100">
+            <strong>Note:</strong> Human P2P coordination is becoming the main product path. The trustless HTLC flow should be treated as testing-only for now and used only with testnet or very small experimental amounts.
         </div>
     </div>
 </div>

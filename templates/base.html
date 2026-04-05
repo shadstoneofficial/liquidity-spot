@@ -41,6 +41,7 @@
 
             <!-- Desktop Menu -->
             <div class="hidden md:flex items-center">
+                <a href="{{ url_for('main.p2p') }}" class="mr-6 hover:text-gfa-light">P2P</a>
                 <a href="{{ url_for('main.tutorial') }}" class="mr-6 hover:text-gfa-light">Tutorial</a>
                 {% if session.get('user_id') %}
                     <a href="{{ url_for('main.dashboard') }}" class="mr-4 hover:text-gfa-light">Dashboard</a>
@@ -58,6 +59,7 @@
         <!-- Mobile Menu (Hidden by default) -->
         <div id="mobile-menu" class="hidden md:hidden mt-4 bg-black/90 p-4 rounded-lg border border-gfa-grey/20">
             <div class="flex flex-col space-y-4">
+                <a href="{{ url_for('main.p2p') }}" class="hover:text-gfa-light">P2P</a>
                 <a href="{{ url_for('main.tutorial') }}" class="hover:text-gfa-light">Tutorial</a>
                 {% if session.get('user_id') %}
                     <a href="{{ url_for('main.dashboard') }}" class="hover:text-gfa-light">Dashboard</a>
@@ -97,7 +99,7 @@
     </main>
 
     <footer class="bg-black/20 p-4 text-center text-gfa-grey mt-8">
-        <p>&copy; 2026 Liquidity.spot - HNS/BTC Atomic Swaps</p>
+        <p>&copy; 2026 Liquidity.spot - P2P HNS/BTC Coordination</p>
     </footer>
 </body>
 </html>

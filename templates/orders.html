@@ -1,6 +1,20 @@
 {% extends "base.html" %}
 
 {% block content %}
+<div class="mb-6 bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-4">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div>
+            <p class="font-bold text-yellow-200">Atomic Swap Testing Mode</p>
+            <p class="text-sm text-yellow-100">
+                These order and swap tools remain available for testing and learning. Human P2P coordination is becoming the main product direction.
+            </p>
+        </div>
+        <a href="{{ url_for('main.p2p') }}" class="inline-block bg-gfa-light text-gfa-dark px-4 py-2 rounded font-bold hover:bg-white transition text-center">
+            View P2P Direction
+        </a>
+    </div>
+</div>
+
 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
     <!-- Create Order Form -->
     <div class="bg-black/30 p-6 rounded-lg">
@@ -90,7 +104,7 @@
 
 <script>
     function useMarketPrice() {
-        const price = {{ current_price }};
+        const price = parseFloat("{{ '%.8f'|format(current_price) }}");
         document.getElementById('priceInput').value = price.toFixed(8);
         calculateTotal();
     }

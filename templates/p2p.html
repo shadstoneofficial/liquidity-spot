@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-8">
+    <div class="bg-black/30 p-8 rounded-lg border border-gfa-grey/20">
+        <div class="inline-flex items-center gap-2 bg-gfa-light/20 text-gfa-light text-sm font-bold px-3 py-1 rounded-full mb-4">
+            Primary Mode
+        </div>
+        <h1 class="text-4xl font-bold text-gfa-light mb-4">Human P2P Swaps</h1>
+        <p class="text-lg text-white mb-4">
+            This is the safer near-term direction for `Liquidity.spot`: a non-custodial, human-to-human marketplace for coordinating HNS/BTC swaps.
+        </p>
+        <p class="text-gfa-grey max-w-3xl">
+            The platform helps counterparties find each other, agree on price, understand Alice/Bob roles, and track trade progress without pretending the current atomic-swap execution flow is mainnet-ready.
+        </p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-black/30 p-6 rounded-lg border border-gfa-grey/20">
+            <h2 class="text-2xl font-bold text-white mb-4">What This Mode Means</h2>
+            <ul class="list-disc list-inside text-gfa-grey space-y-2">
+                <li>Human-to-human matching and negotiation</li>
+                <li>Shared trade room and milestone tracking</li>
+                <li>TXID submission, notes, and confirmations</li>
+                <li>Reputation and Gems as accountability tools</li>
+                <li>No platform custody of user funds</li>
+            </ul>
+        </div>
+
+        <div class="bg-black/30 p-6 rounded-lg border border-gfa-grey/20">
+            <h2 class="text-2xl font-bold text-white mb-4">Build Status</h2>
+            <ul class="list-disc list-inside text-gfa-grey space-y-2">
+                <li>Concept approved as the main product direction</li>
+                <li>Trade-room UX still to be built</li>
+                <li>Milestones, chat, disputes, and TXID flow coming next</li>
+                <li>Trustless atomic swap flow remains available separately in testing mode</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="bg-blue-900/20 border border-blue-500/30 rounded-lg p-6">
+        <h2 class="text-2xl font-bold text-white mb-3">Near-Term Product Plan</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-gfa-grey">
+            <div>
+                <p class="font-bold text-white mb-2">Phase 1</p>
+                <ul class="list-disc list-inside space-y-1">
+                    <li>P2P trade room</li>
+                    <li>Milestone checklist</li>
+                    <li>Manual TXID submission</li>
+                    <li>No-show / cancel flows</li>
+                </ul>
+            </div>
+            <div>
+                <p class="font-bold text-white mb-2">Phase 2</p>
+                <ul class="list-disc list-inside space-y-1">
+                    <li>Disputes and moderation tools</li>
+                    <li>Gems stake and penalty rules</li>
+                    <li>Counterparty notes / chat</li>
+                    <li>Explorer verification support</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-6 text-yellow-100">
+        <p>
+            <strong>Note:</strong> The current HTLC-based trustless swap screens are still useful for testing and learning, but they remain experimental. Human P2P is intended to become the main production-facing path.
+        </p>
+    </div>
+</div>
+{% endblock %}
