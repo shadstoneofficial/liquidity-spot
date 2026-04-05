@@ -7,7 +7,7 @@
             <div>
                 <h1 class="text-3xl font-bold text-gfa-light">P2P Trade Room #{{ trade.id }}</h1>
                 <p class="text-gfa-grey mt-2">
-                    Offer #{{ trade.offer_id }} | {{ trade.offer.side|upper }} {{ trade.offer.amount_hns }} HNS at {{ '%.8f'|format(trade.offer.price_btc_per_hns) }} BTC/HNS
+                    Offer #{{ trade.offer_id }} | {{ trade.offer.side|upper }} {{ trade.offer.amount_hns }} HNS at {{ '%.12f'|format(trade.offer.price_btc_per_hns) }} BTC/HNS
                 </p>
                 <p class="text-sm text-gfa-grey mt-2">
                     <strong class="text-white">Alice:</strong> {{ alice_user.username }} (HNS Seller)
@@ -64,7 +64,7 @@
                     <div>
                         <p><strong class="text-white">Your Role:</strong> {{ current_role }}</p>
                         <p><strong class="text-white">Offer Side:</strong> {{ trade.offer.side|upper }}</p>
-                        <p><strong class="text-white">Total BTC:</strong> {{ '%.8f'|format(trade.offer.amount_hns * trade.offer.price_btc_per_hns) }}</p>
+                        <p><strong class="text-white">Total BTC:</strong> {{ '%.12f'|format(trade.offer.amount_hns * trade.offer.price_btc_per_hns) }}</p>
                         <p><strong class="text-white">Created:</strong> {{ trade.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
                     </div>
                 </div>

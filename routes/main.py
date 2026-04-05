@@ -4,6 +4,7 @@ from routes.auth import login_required
 import secrets
 import hashlib
 import requests
+from decimal import Decimal, InvalidOperation
 
 main_bp = Blueprint('main', __name__)
 
@@ -38,8 +39,8 @@ def create_p2p_offer():
         offer = P2POffer(
             creator_id=session['user_id'],
             side=side,
-            amount_hns=float(amount_hns),
-            price_btc_per_hns=float(price),
+            amount_hns=Decimal(amount_hns),
+            price_btc_per_hns=Decimal(price),
             gems_stake=int(gems_stake),
             payment_method=payment_method,
             notes=notes
@@ -47,7 +48,7 @@ def create_p2p_offer():
         db.session.add(offer)
         db.session.commit()
         flash('P2P offer created successfully.', 'success')
-    except Exception as exc:
+    except (InvalidOperation, ValueError) as exc:
         flash(f'Error creating P2P offer: {exc}', 'error')
 
     return redirect(url_for('main.p2p'))
@@ -256,15 +257,15 @@ def orders():
             order = Order(
                 user_id=session['user_id'],
                 side=side,
-                amount_hns=float(amount_hns),
-                price_btc_per_hns=float(price),
+                amount_hns=Decimal(amount_hns),
+                price_btc_per_hns=Decimal(price),
                 gems_stake=int(gems_stake)
             )
             db.session.add(order)
             db.session.commit()
             flash('Order created successfully!', 'success')
             return redirect(url_for('main.orders'))
-        except Exception as e:
+        except (InvalidOperation, ValueError) as e:
             flash(f'Error creating order: {str(e)}', 'error')
 
     orders = Order.query.filter_by(status='open').order_by(Order.created_at.desc()).all()
@@ -273,12 +274,12 @@ def orders():
     try:
         response = requests.get('https://api.coingecko.com/api/v3/simple/price?ids=handshake&vs_currencies=btc')
         if response.status_code == 200:
-            current_price = response.json().get('handshake', {}).get('btc', 0.00000050)
+            current_price = response.json().get('handshake', {}).get('btc', 0.000000500000)
         else:
-            current_price = 0.00000050
+            current_price = 0.000000500000
     except Exception as e:
         print(f"CoinGecko API Error: {e}")
-        current_price = 0.00000050
+        current_price = 0.000000500000
         
     return render_template('orders.html', orders=orders, current_price=current_price)
 
@@ -400,7 +401,7 @@ def swap_details(id):
     try:
         # response = requests.get('https://api.coingecko.com/api/v3/simple/price?ids=handshake&vs_currencies=btc')
         # price = response.json()['handshake']['btc']
-        price = 0.00000050 # Placeholder
+        price = 0.000000500000 # Placeholder
     except:
         price = 0.00000000
         

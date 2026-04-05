@@ -32,6 +32,25 @@ def ensure_p2p_schema():
                     text(f"ALTER TABLE p2p_trades ADD COLUMN {column_name} {column_type}")
                 )
 
+def ensure_numeric_precision():
+    """Increase numeric precision for BTC pricing on PostgreSQL deployments."""
+    if db.engine.dialect.name != 'postgresql':
+        return
+
+    with db.engine.begin() as connection:
+        connection.execute(text(
+            "ALTER TABLE orders ALTER COLUMN amount_hns TYPE NUMERIC(24,8)"
+        ))
+        connection.execute(text(
+            "ALTER TABLE orders ALTER COLUMN price_btc_per_hns TYPE NUMERIC(24,12)"
+        ))
+        connection.execute(text(
+            "ALTER TABLE p2p_offers ALTER COLUMN amount_hns TYPE NUMERIC(24,8)"
+        ))
+        connection.execute(text(
+            "ALTER TABLE p2p_offers ALTER COLUMN price_btc_per_hns TYPE NUMERIC(24,12)"
+        ))
+
 # Run migrations/create tables on startup
 # This is safe to run on every deploy for simple apps
 try:
@@ -39,6 +58,7 @@ try:
         print("Creating/Verifying database tables...", flush=True)
         db.create_all()
         ensure_p2p_schema()
+        ensure_numeric_precision()
         print("Database tables created!", flush=True)
 except Exception as e:
     print(f"Error initializing database: {e}", flush=True)

@@ -33,7 +33,7 @@
                             <tr class="border-b border-gfa-grey/10">
                                 <td class="p-2 uppercase {{ 'text-green-400' if order.side == 'buy' else 'text-red-400' }} whitespace-nowrap">{{ order.side }}</td>
                                 <td class="p-2 whitespace-nowrap">{{ order.amount_hns }}</td>
-                                <td class="p-2 whitespace-nowrap">{{ '%.8f'|format(order.price_btc_per_hns) }}</td>
+                                <td class="p-2 whitespace-nowrap">{{ '%.12f'|format(order.price_btc_per_hns) }}</td>
                                 <td class="p-2 whitespace-nowrap">{{ order.status }}</td>
                                 <td class="p-2 whitespace-nowrap">
                                     {% if order.status == 'open' %}

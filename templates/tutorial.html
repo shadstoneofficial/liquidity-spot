@@ -68,6 +68,24 @@
         </section>
 
         <section>
+            <h2 class="text-2xl font-bold mb-4 text-white">Two Modes In The App</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="bg-black/50 p-4 rounded border border-gfa-grey/20">
+                    <h3 class="text-xl font-bold text-white mb-2">1. Human P2P Mode</h3>
+                    <p>
+                        This is the main product path now. Users post P2P offers, match with another user, and coordinate the trade in a shared room with milestones, TXIDs, notes, and dispute handling.
+                    </p>
+                </div>
+                <div class="bg-black/50 p-4 rounded border border-yellow-500/30">
+                    <h3 class="text-xl font-bold text-white mb-2">2. Atomic Swaps (Experimental)</h3>
+                    <p>
+                        This is the original HTLC-based flow. It is still available for testing and learning, but should be treated as experimental until safety, verification, and wallet tooling are stronger.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <section>
             <h2 class="text-2xl font-bold mb-4 text-white">Step-by-Step Guide</h2>
             
             <div class="space-y-4">
@@ -77,11 +95,10 @@
                 </div>
 
                 <div class="bg-black/50 p-4 rounded border border-gfa-grey/20">
-                    <h3 class="text-xl font-bold text-white mb-2">2. Create or Accept an Order</h3>
-                    <p>Go to the <strong>Orders</strong> page to view the order book.</p>
+                    <h3 class="text-xl font-bold text-white mb-2">2. Choose A Mode</h3>
                     <ul class="list-disc list-inside mt-2 ml-4">
-                        <li><strong>Post an Order:</strong> Specify if you want to Buy or Sell HNS, the amount, your desired price in BTC, and (optionally) stake Gems to show you're serious.</li>
-                        <li><strong>Accept an Order:</strong> Browse existing offers and click "Accept" to initiate a swap.</li>
+                        <li><strong>P2P Mode:</strong> Go to the <strong>P2P</strong> page to post or accept a human-to-human offer and use the trade room.</li>
+                        <li><strong>Atomic Swaps:</strong> Go to the <strong>Atomic Swaps</strong> page to use the original HTLC testing flow.</li>
                     </ul>
                 </div>
 

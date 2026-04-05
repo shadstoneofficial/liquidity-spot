@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Liquidity.spot</title>
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/liquidity-spot.png') }}">
-    <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/liquidity-spot.png') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/liquidity-spot-icon.png') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/liquidity-spot-icon.png') }}">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -27,8 +27,8 @@
 <body class="bg-gfa-dark text-white min-h-screen flex flex-col">
     <nav class="bg-black/20 p-4">
         <div class="container mx-auto flex justify-between items-center">
-            <a href="{{ url_for('main.index') }}" class="flex items-center gap-3 text-2xl font-bold text-gfa-light hover:opacity-80 transition">
-                <img src="{{ url_for('static', filename='img/liquidity-spot.png') }}" alt="Liquidity.spot Logo" class="h-10 w-auto">
+            <a href="{{ url_for('main.index') }}" class="flex items-center gap-3 text-2xl font-bold text-gfa-light hover:opacity-80 transition min-w-0">
+                <img src="{{ url_for('static', filename='img/liquidity-spot-icon.png') }}" alt="Liquidity.spot Logo" class="h-10 w-10 object-contain shrink-0">
                 Liquidity.spot
             </a>
             
@@ -41,11 +41,15 @@
 
             <!-- Desktop Menu -->
             <div class="hidden md:flex items-center">
+                {% if session.get('user_id') %}
+                    <span class="mr-6 text-sm text-gfa-grey whitespace-nowrap">Welcome {{ session.get('username', 'user') }}</span>
+                {% endif %}
                 <a href="{{ url_for('main.p2p') }}" class="mr-6 hover:text-gfa-light">P2P</a>
                 <a href="{{ url_for('main.tutorial') }}" class="mr-6 hover:text-gfa-light">Tutorial</a>
                 {% if session.get('user_id') %}
                     <a href="{{ url_for('main.dashboard') }}" class="mr-4 hover:text-gfa-light">Dashboard</a>
-                    <a href="{{ url_for('main.orders') }}" class="mr-4 hover:text-gfa-light">Orders</a>
+                    <a href="{{ url_for('main.orders') }}" class="mr-4 hover:text-gfa-light">Atomic Swaps</a>
+                    <span class="mr-4 text-[10px] uppercase tracking-wide bg-yellow-500/20 text-yellow-200 px-2 py-1 rounded">Experimental</span>
                     {% if session.get('tier') == 'team' %}
                         <a href="{{ url_for('admin.credit') }}" class="mr-4 hover:text-gfa-light">Admin</a>
                     {% endif %}
@@ -59,11 +63,14 @@
         <!-- Mobile Menu (Hidden by default) -->
         <div id="mobile-menu" class="hidden md:hidden mt-4 bg-black/90 p-4 rounded-lg border border-gfa-grey/20">
             <div class="flex flex-col space-y-4">
+                {% if session.get('user_id') %}
+                    <div class="text-sm text-gfa-grey">Welcome {{ session.get('username', 'user') }}</div>
+                {% endif %}
                 <a href="{{ url_for('main.p2p') }}" class="hover:text-gfa-light">P2P</a>
                 <a href="{{ url_for('main.tutorial') }}" class="hover:text-gfa-light">Tutorial</a>
                 {% if session.get('user_id') %}
                     <a href="{{ url_for('main.dashboard') }}" class="hover:text-gfa-light">Dashboard</a>
-                    <a href="{{ url_for('main.orders') }}" class="hover:text-gfa-light">Orders</a>
+                    <a href="{{ url_for('main.orders') }}" class="hover:text-gfa-light">Atomic Swaps (Experimental)</a>
                     {% if session.get('tier') == 'team' %}
                         <a href="{{ url_for('admin.credit') }}" class="hover:text-gfa-light">Admin</a>
                     {% endif %}

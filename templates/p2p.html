@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="max-w-5xl mx-auto space-y-8">
+<div class="max-w-7xl mx-auto space-y-8">
     <div class="bg-black/30 p-6 rounded-lg border border-gfa-grey/20">
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
@@ -20,8 +20,8 @@
     </div>
 
     {% if session.get('user_id') %}
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div class="lg:col-span-1 bg-black/30 p-6 rounded-lg border border-gfa-grey/20">
+    <div class="grid grid-cols-1 xl:grid-cols-5 gap-6">
+        <div class="xl:col-span-2 bg-black/30 p-6 rounded-lg border border-gfa-grey/20">
             <h2 class="text-2xl font-bold text-white mb-4">Create P2P Offer</h2>
             <form method="POST" action="{{ url_for('main.create_p2p_offer') }}" class="space-y-4">
                 <div>
@@ -37,7 +37,8 @@
                 </div>
                 <div>
                     <label class="block text-gfa-grey mb-1">Price (BTC per HNS)</label>
-                    <input type="text" inputmode="decimal" name="price" required class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white" placeholder="0.00000009">
+                    <input type="text" inputmode="decimal" name="price" required class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white" placeholder="0.000000069999">
+                    <p class="text-xs text-gfa-grey mt-1">Supports up to 12 decimal places.</p>
                 </div>
                 <div>
                     <label class="block text-gfa-grey mb-1">Payment Method</label>
@@ -57,34 +58,36 @@
             </form>
         </div>
 
-        <div class="lg:col-span-2 bg-black/30 p-6 rounded-lg border border-gfa-grey/20">
+        <div class="xl:col-span-3 bg-black/30 p-6 rounded-lg border border-gfa-grey/20">
             <h2 class="text-2xl font-bold text-white mb-4">Open P2P Offers</h2>
             {% if offers %}
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left min-w-[760px]">
+                <div>
+                    <table class="w-full text-left text-sm">
                         <thead>
                             <tr class="border-b border-gfa-grey/30">
-                                <th class="p-2 whitespace-nowrap">User</th>
-                                <th class="p-2 whitespace-nowrap">Side</th>
-                                <th class="p-2 whitespace-nowrap">Amount (HNS)</th>
-                                <th class="p-2 whitespace-nowrap">Price (BTC)</th>
-                                <th class="p-2 whitespace-nowrap">Method</th>
-                                <th class="p-2 whitespace-nowrap">Bond</th>
-                                <th class="p-2 whitespace-nowrap">Action</th>
+                                <th class="p-2">User</th>
+                                <th class="p-2">Role</th>
+                                <th class="p-2">HNS</th>
+                                <th class="p-2">BTC/HNS</th>
+                                <th class="p-2">Details</th>
+                                <th class="p-2 text-right">Action</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for offer in offers %}
                             <tr class="border-b border-gfa-grey/10 hover:bg-white/5">
-                                <td class="p-2 whitespace-nowrap">
-                                    {{ offer.creator.username }}
+                                <td class="p-2 align-top">
+                                    <div class="font-medium text-white">{{ offer.creator.username }}</div>
                                     {% if offer.creator_id == session.get('user_id') %}
                                         <span class="text-xs bg-gfa-grey/20 px-1 rounded ml-1">(You)</span>
                                     {% endif %}
+                                    {% if offer.notes %}
+                                        <div class="text-xs text-gfa-grey mt-2 leading-snug">{{ offer.notes }}</div>
+                                    {% endif %}
                                 </td>
-                                <td class="p-2 uppercase {{ 'text-green-400' if offer.side == 'buy' else 'text-red-400' }}">
-                                    {{ offer.side }}
-                                    <span class="block text-xs text-gfa-grey normal-case">
+                                <td class="p-2 align-top">
+                                    <span class="block uppercase {{ 'text-green-400' if offer.side == 'buy' else 'text-red-400' }}">{{ offer.side }}</span>
+                                    <span class="block text-xs text-gfa-grey leading-snug">
                                         {% if offer.side == 'sell' %}
                                             Creator is Alice
                                         {% else %}
@@ -92,11 +95,13 @@
                                         {% endif %}
                                     </span>
                                 </td>
-                                <td class="p-2 whitespace-nowrap">{{ offer.amount_hns }}</td>
-                                <td class="p-2 whitespace-nowrap">{{ '%.8f'|format(offer.price_btc_per_hns) }}</td>
-                                <td class="p-2 whitespace-nowrap">{{ offer.payment_method }}</td>
-                                <td class="p-2 whitespace-nowrap">{{ offer.gems_stake }} 💎</td>
-                                <td class="p-2 whitespace-nowrap">
+                                <td class="p-2 align-top">{{ offer.amount_hns }}</td>
+                                <td class="p-2 align-top font-mono">{{ '%.12f'|format(offer.price_btc_per_hns) }}</td>
+                                <td class="p-2 align-top text-xs text-gfa-grey">
+                                    <div>{{ offer.payment_method }}</div>
+                                    <div class="mt-2">{{ offer.gems_stake }} 💎 bond</div>
+                                </td>
+                                <td class="p-2 align-top text-right">
                                     {% if offer.creator_id == session.get('user_id') %}
                                         <form method="POST" action="{{ url_for('main.cancel_p2p_offer', offer_id=offer.id) }}">
                                             <button type="submit" class="text-red-400 hover:text-red-300 text-xs">Cancel</button>
@@ -108,13 +113,6 @@
                                     {% endif %}
                                 </td>
                             </tr>
-                            {% if offer.notes %}
-                            <tr class="border-b border-gfa-grey/10">
-                                <td colspan="7" class="p-2 text-sm text-gfa-grey">
-                                    <strong class="text-white">Notes:</strong> {{ offer.notes }}
-                                </td>
-                            </tr>
-                            {% endif %}
                             {% endfor %}
                         </tbody>
                     </table>
@@ -129,7 +127,7 @@
         <h2 class="text-2xl font-bold text-white mb-4">My P2P Trades</h2>
         {% if my_trades %}
             <div class="overflow-x-auto">
-                <table class="w-full text-left min-w-[700px]">
+                <table class="w-full text-left">
                     <thead>
                         <tr class="border-b border-gfa-grey/30">
                             <th class="p-2 whitespace-nowrap">Trade</th>

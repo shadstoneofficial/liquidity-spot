@@ -19,8 +19,8 @@ class Order(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.String(36), db.ForeignKey('users.id'))
     side = db.Column(db.String(10))                           # 'buy' or 'sell' HNS
-    amount_hns = db.Column(db.Numeric(precision=18, scale=8))
-    price_btc_per_hns = db.Column(db.Numeric(precision=18, scale=8))
+    amount_hns = db.Column(db.Numeric(precision=24, scale=8))
+    price_btc_per_hns = db.Column(db.Numeric(precision=24, scale=12))
     gems_stake = db.Column(db.Integer, nullable=True)        # optional skin-in-game stake
     status = db.Column(db.String(20), default='open')        # open / matched / canceled
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -46,8 +46,8 @@ class P2POffer(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     creator_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
     side = db.Column(db.String(10), nullable=False)            # buy or sell HNS
-    amount_hns = db.Column(db.Numeric(precision=18, scale=8), nullable=False)
-    price_btc_per_hns = db.Column(db.Numeric(precision=18, scale=8), nullable=False)
+    amount_hns = db.Column(db.Numeric(precision=24, scale=8), nullable=False)
+    price_btc_per_hns = db.Column(db.Numeric(precision=24, scale=12), nullable=False)
     gems_stake = db.Column(db.Integer, default=0)
     payment_method = db.Column(db.String(50), default='Manual Wallet Transfer')
     notes = db.Column(db.Text)

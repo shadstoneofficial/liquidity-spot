@@ -18,7 +18,7 @@
 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
     <!-- Create Order Form -->
     <div class="bg-black/30 p-6 rounded-lg">
-        <h2 class="text-2xl font-bold mb-4 text-gfa-light">Create Order</h2>
+        <h2 class="text-2xl font-bold mb-4 text-gfa-light">Create Atomic Swap Order</h2>
         <form method="POST" action="{{ url_for('main.orders') }}" class="space-y-4">
             <div>
                 <label class="block text-gfa-grey mb-1">Side</label>
@@ -34,16 +34,16 @@
             <div>
                 <label class="block text-gfa-grey mb-1">Price (BTC per HNS)</label>
                 <div class="relative">
-                    <input type="text" inputmode="decimal" pattern="^[0-9]*[.,]?[0-9]*$" name="price" id="priceInput" required class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white" placeholder="{{ '%.8f'|format(current_price) }}" value="{{ '%.8f'|format(current_price) }}" oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*?)\..*/g, '$1');">
+                    <input type="text" inputmode="decimal" pattern="^[0-9]*[.,]?[0-9]*$" name="price" id="priceInput" required class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white" placeholder="{{ '%.12f'|format(current_price) }}" value="{{ '%.12f'|format(current_price) }}" oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*?)\..*/g, '$1');">
                     <button type="button" onclick="useMarketPrice()" class="absolute right-2 top-2 text-xs bg-gfa-blue text-white px-2 py-1 rounded hover:bg-blue-600">
-                        Use Market: {{ '%.8f'|format(current_price) }}
+                        Use Market: {{ '%.12f'|format(current_price) }}
                     </button>
                 </div>
-                <p class="text-xs text-gfa-grey mt-1">Source: CoinGecko</p>
+                <p class="text-xs text-gfa-grey mt-1">Source: CoinGecko. Supports up to 12 decimal places.</p>
             </div>
             <div class="bg-white/5 p-3 rounded border border-gfa-grey/20">
                 <label class="block text-gfa-grey mb-1 text-sm">Total Value (BTC)</label>
-                <div class="text-xl font-bold text-gfa-light" id="totalValue">0.00000000 BTC</div>
+                <div class="text-xl font-bold text-gfa-light" id="totalValue">0.000000000000 BTC</div>
             </div>
             <div>
                 <label class="block text-gfa-grey mb-1">Stake Gems (Optional)</label>
@@ -55,7 +55,7 @@
 
     <!-- Order Book -->
     <div class="md:col-span-2 bg-black/30 p-6 rounded-lg">
-        <h2 class="text-2xl font-bold mb-4 text-gfa-light">Order Book</h2>
+        <h2 class="text-2xl font-bold mb-4 text-gfa-light">Atomic Swap Order Book</h2>
         {% if orders %}
             <div class="overflow-x-auto">
                 <table class="w-full text-left min-w-[600px]">
@@ -80,7 +80,7 @@
                                 </td>
                                 <td class="p-2 uppercase {{ 'text-green-400' if order.side == 'buy' else 'text-red-400' }}">{{ order.side }}</td>
                                 <td class="p-2">{{ order.amount_hns }}</td>
-                                <td class="p-2">{{ '%.8f'|format(order.price_btc_per_hns) }}</td>
+                                <td class="p-2">{{ '%.12f'|format(order.price_btc_per_hns) }}</td>
                                 <td class="p-2">{{ order.gems_stake }} 💎</td>
                                 <td class="p-2">
                                     {% if order.user_id == session.get('user_id') %}
@@ -104,8 +104,8 @@
 
 <script>
     function useMarketPrice() {
-        const price = parseFloat("{{ '%.8f'|format(current_price) }}");
-        document.getElementById('priceInput').value = price.toFixed(8);
+        const price = parseFloat("{{ '%.12f'|format(current_price) }}");
+        document.getElementById('priceInput').value = price.toFixed(12);
         calculateTotal();
     }
 
@@ -113,7 +113,7 @@
         const amount = parseFloat(document.querySelector('input[name="amount_hns"]').value) || 0;
         const price = parseFloat(document.getElementById('priceInput').value) || 0;
         const total = amount * price;
-        document.getElementById('totalValue').textContent = total.toFixed(8) + ' BTC';
+        document.getElementById('totalValue').textContent = total.toFixed(12) + ' BTC';
     }
 
     document.querySelector('input[name="amount_hns"]').addEventListener('input', calculateTotal);
