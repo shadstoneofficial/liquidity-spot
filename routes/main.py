@@ -5,6 +5,8 @@ import secrets
 import hashlib
 import requests
 from decimal import Decimal, InvalidOperation
+from datetime import datetime
+from models import P2PTradeParticipantState
 
 main_bp = Blueprint('main', __name__)
 
@@ -72,11 +74,19 @@ def accept_p2p_offer(offer_id):
         counterparty_id=session['user_id'],
         status='matched',
         milestone='matched',
-        latest_note='Trade matched. Use this room to coordinate next steps safely.'
+        latest_note='Trade matched. Use this room to coordinate next steps safely.',
+        last_actor_user_id=session['user_id']
     )
     offer.status = 'matched'
 
     db.session.add(trade)
+    db.session.commit()
+
+    db.session.add(P2PTradeParticipantState(
+        trade_id=trade.id,
+        user_id=session['user_id'],
+        last_viewed_at=datetime.utcnow()
+    ))
     db.session.commit()
 
     flash('P2P trade room created.', 'success')
@@ -100,6 +110,20 @@ def p2p_trade_room(trade_id):
         bob_user = trade.creator
 
     current_role = 'Alice' if session['user_id'] == alice_user.id else 'Bob'
+
+    participant_state = P2PTradeParticipantState.query.filter_by(
+        trade_id=trade.id,
+        user_id=session['user_id']
+    ).first()
+    if participant_state:
+        participant_state.last_viewed_at = datetime.utcnow()
+    else:
+        db.session.add(P2PTradeParticipantState(
+            trade_id=trade.id,
+            user_id=session['user_id'],
+            last_viewed_at=datetime.utcnow()
+        ))
+    db.session.commit()
 
     return render_template(
         'p2p_trade_room.html',
@@ -136,6 +160,8 @@ def update_p2p_trade(trade_id):
     if latest_note:
         trade.latest_note = latest_note
 
+    trade.last_actor_user_id = session['user_id']
+
     db.session.commit()
     flash('P2P trade updated.', 'success')
     return redirect(url_for('main.p2p_trade_room', trade_id=trade.id))
@@ -159,6 +185,7 @@ def add_p2p_trade_message(trade_id):
         user_id=session['user_id'],
         message=message
     ))
+    trade.last_actor_user_id = session['user_id']
     db.session.commit()
 
     flash('Message added.', 'success')
@@ -194,6 +221,7 @@ def p2p_trade_action(trade_id):
     trade.status = status
     trade.milestone = milestone
     trade.latest_note = note or default_note
+    trade.last_actor_user_id = session['user_id']
 
     if status in ['disputed', 'no_show', 'canceled']:
         trade.admin_review_status = 'in_review'
@@ -240,7 +268,21 @@ def dashboard():
     my_swaps = Swap.query.join(Order).filter(
         (Order.user_id == user.id) | (Swap.matcher_id == user.id)
     ).all()
-    return render_template('dashboard.html', user=user, orders=my_orders, swaps=my_swaps)
+    my_p2p_trades = P2PTrade.query.filter(
+        (P2PTrade.creator_id == user.id) | (P2PTrade.counterparty_id == user.id)
+    ).order_by(P2PTrade.updated_at.desc()).all()
+
+    active_swaps = [swap for swap in my_swaps if swap.status not in ['completed', 'canceled']]
+    active_p2p_trades = [trade for trade in my_p2p_trades if trade.status not in ['completed', 'canceled']]
+
+    return render_template(
+        'dashboard.html',
+        user=user,
+        orders=my_orders,
+        swaps=my_swaps,
+        active_swaps=active_swaps,
+        active_p2p_trades=active_p2p_trades
+    )
 
 @main_bp.route('/orders', methods=['GET', 'POST'])
 @login_required

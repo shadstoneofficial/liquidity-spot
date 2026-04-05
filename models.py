@@ -69,6 +69,7 @@ class P2PTrade(db.Model):
     admin_review_status = db.Column(db.String(20), default='unreviewed')   # unreviewed / in_review / resolved
     admin_resolution = db.Column(db.String(30))                            # completed / canceled / disputed / no_show / refunded
     admin_notes = db.Column(db.Text)
+    last_actor_user_id = db.Column(db.String(36))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     offer = db.relationship('P2POffer', backref='trade')
@@ -83,4 +84,13 @@ class P2PTradeMessage(db.Model):
     message = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     trade = db.relationship('P2PTrade', backref='messages')
+    user = db.relationship('User')
+
+class P2PTradeParticipantState(db.Model):
+    __tablename__ = 'p2p_trade_participant_states'
+    id = db.Column(db.Integer, primary_key=True)
+    trade_id = db.Column(db.Integer, db.ForeignKey('p2p_trades.id'), nullable=False)
+    user_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
+    last_viewed_at = db.Column(db.DateTime, default=datetime.utcnow)
+    trade = db.relationship('P2PTrade', backref='participant_states')
     user = db.relationship('User')

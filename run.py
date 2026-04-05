@@ -22,6 +22,7 @@ def ensure_p2p_schema():
         'admin_review_status': "VARCHAR(20) DEFAULT 'unreviewed'",
         'admin_resolution': "VARCHAR(30)",
         'admin_notes': "TEXT",
+        'last_actor_user_id': "VARCHAR(36)",
     }
 
     with db.engine.begin() as connection:

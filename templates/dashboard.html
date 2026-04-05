@@ -1,21 +1,115 @@
 {% extends "base.html" %}
 
+{% block title %}Dashboard | Liquidity.spot{% endblock %}
+
 {% block content %}
-<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-    <!-- User Stats -->
+<div class="space-y-6">
     <div class="bg-black/30 p-6 rounded-lg">
-        <h2 class="text-2xl font-bold mb-4 text-gfa-light">My Profile</h2>
-        <div class="space-y-2">
-            <p><span class="text-gfa-grey">Username:</span> {{ user.username }}</p>
-            <p><span class="text-gfa-grey">Tier:</span> {{ user.tier }}</p>
-            <p><span class="text-gfa-grey">Gems Balance:</span> {{ user.gems_balance }} 💎</p>
-            <p><span class="text-gfa-grey">Completed Swaps:</span> {{ user.completed_swaps }}</p>
-        </div>
+        <h2 class="text-2xl font-bold mb-4 text-gfa-light">Open / In Progress Trades</h2>
+        {% if active_p2p_trades or active_swaps %}
+            <div class="space-y-6">
+                <div>
+                    <h3 class="text-xl font-bold mb-3 text-white">P2P Trades</h3>
+                    {% if active_p2p_trades %}
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left min-w-[760px]">
+                                <thead>
+                                    <tr class="border-b border-gfa-grey/30">
+                                        <th class="p-2 whitespace-nowrap">Trade</th>
+                                        <th class="p-2 whitespace-nowrap">Role</th>
+                                        <th class="p-2 whitespace-nowrap">Status</th>
+                                        <th class="p-2 whitespace-nowrap">Milestone</th>
+                                        <th class="p-2 whitespace-nowrap">Updated</th>
+                                        <th class="p-2 whitespace-nowrap">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for trade in active_p2p_trades %}
+                                    <tr class="border-b border-gfa-grey/10 hover:bg-white/5">
+                                        <td class="p-2 whitespace-nowrap">#{{ trade.id }} / Offer #{{ trade.offer_id }}</td>
+                                        <td class="p-2 whitespace-nowrap">
+                                            {% if trade.offer.side == 'sell' %}
+                                                {% if trade.creator_id == user.id %}Alice{% else %}Bob{% endif %}
+                                            {% else %}
+                                                {% if trade.creator_id == user.id %}Bob{% else %}Alice{% endif %}
+                                            {% endif %}
+                                        </td>
+                                        <td class="p-2 whitespace-nowrap uppercase">{{ trade.status }}</td>
+                                        <td class="p-2 whitespace-nowrap">{{ trade.milestone }}</td>
+                                        <td class="p-2 whitespace-nowrap">{{ trade.updated_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                        <td class="p-2 whitespace-nowrap">
+                                            <a href="{{ url_for('main.p2p_trade_room', trade_id=trade.id) }}" class="text-gfa-blue hover:text-blue-300">Enter Room</a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-gfa-grey">No active P2P trades.</p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <h3 class="text-xl font-bold mb-3 text-white">Atomic Swaps</h3>
+                    {% if active_swaps %}
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left min-w-[700px]">
+                                <thead>
+                                    <tr class="border-b border-gfa-grey/30">
+                                        <th class="p-2 whitespace-nowrap">ID</th>
+                                        <th class="p-2 whitespace-nowrap">Role</th>
+                                        <th class="p-2 whitespace-nowrap">Status</th>
+                                        <th class="p-2 whitespace-nowrap">Created</th>
+                                        <th class="p-2 whitespace-nowrap">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for swap in active_swaps %}
+                                        <tr class="border-b border-gfa-grey/10 hover:bg-white/5">
+                                            <td class="p-2 whitespace-nowrap">#{{ swap.id }}</td>
+                                            <td class="p-2 whitespace-nowrap">
+                                                {% if swap.matcher_id == user.id %}
+                                                    Matcher (Taker)
+                                                {% else %}
+                                                    Order Creator (Maker)
+                                                {% endif %}
+                                            </td>
+                                            <td class="p-2 uppercase whitespace-nowrap">{{ swap.status }}</td>
+                                            <td class="p-2 whitespace-nowrap">{{ swap.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                            <td class="p-2 whitespace-nowrap">
+                                                <a href="{{ url_for('main.swap_details', id=swap.id) }}" class="text-gfa-blue hover:text-blue-300">View Details</a>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-gfa-grey">No active atomic swaps.</p>
+                    {% endif %}
+                </div>
+            </div>
+        {% else %}
+            <p class="text-gfa-grey">No open or in-progress trades right now.</p>
+        {% endif %}
     </div>
 
-    <!-- Active Orders -->
-    <div class="md:col-span-2 bg-black/30 p-6 rounded-lg">
-        <h2 class="text-2xl font-bold mb-4 text-gfa-light">My Active Orders</h2>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- User Stats -->
+        <div class="bg-black/30 p-6 rounded-lg">
+            <h2 class="text-2xl font-bold mb-4 text-gfa-light">My Profile</h2>
+            <div class="space-y-2">
+                <p><span class="text-gfa-grey">Username:</span> {{ user.username }}</p>
+                <p><span class="text-gfa-grey">Tier:</span> {{ user.tier }}</p>
+                <p><span class="text-gfa-grey">Gems Balance:</span> {{ user.gems_balance }} 💎</p>
+                <p><span class="text-gfa-grey">Completed Swaps:</span> {{ user.completed_swaps }}</p>
+            </div>
+        </div>
+
+        <!-- Active Orders -->
+        <div class="md:col-span-2 bg-black/30 p-6 rounded-lg">
+            <h2 class="text-2xl font-bold mb-4 text-gfa-light">My Active Orders</h2>
         {% if orders %}
             <div class="overflow-x-auto">
                 <table class="w-full text-left min-w-[600px]">
@@ -50,47 +144,7 @@
         {% else %}
             <p class="text-gfa-grey">No active orders.</p>
         {% endif %}
-    </div>
-
-    <!-- Active Swaps -->
-    <div class="md:col-span-3 bg-black/30 p-6 rounded-lg">
-        <h2 class="text-2xl font-bold mb-4 text-gfa-light">My Swaps</h2>
-        {% if swaps %}
-            <div class="overflow-x-auto">
-                <table class="w-full text-left min-w-[700px]">
-                    <thead>
-                        <tr class="border-b border-gfa-grey/30">
-                            <th class="p-2 whitespace-nowrap">ID</th>
-                            <th class="p-2 whitespace-nowrap">Role</th>
-                            <th class="p-2 whitespace-nowrap">Status</th>
-                            <th class="p-2 whitespace-nowrap">Created</th>
-                            <th class="p-2 whitespace-nowrap">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for swap in swaps %}
-                            <tr class="border-b border-gfa-grey/10 hover:bg-white/5">
-                                <td class="p-2 whitespace-nowrap">#{{ swap.id }}</td>
-                                <td class="p-2 whitespace-nowrap">
-                                    {% if swap.matcher_id == user.id %}
-                                        Matcher (Taker)
-                                    {% else %}
-                                        Order Creator (Maker)
-                                    {% endif %}
-                                </td>
-                                <td class="p-2 uppercase whitespace-nowrap">{{ swap.status }}</td>
-                                <td class="p-2 whitespace-nowrap">{{ swap.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                                <td class="p-2 whitespace-nowrap">
-                                    <a href="{{ url_for('main.swap_details', id=swap.id) }}" class="text-gfa-blue hover:text-blue-300">View Details</a>
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        {% else %}
-            <p class="text-gfa-grey">No swaps yet.</p>
-        {% endif %}
+        </div>
     </div>
 </div>
 {% endblock %}
