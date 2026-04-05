@@ -44,7 +44,7 @@
                 {% if session.get('user_id') %}
                     <span class="mr-6 text-sm text-gfa-grey whitespace-nowrap">Welcome {{ session.get('username', 'user') }}</span>
                     <div class="group relative mr-6">
-                        <a href="{{ url_for('main.dashboard') }}" class="relative text-gfa-grey hover:text-gfa-light" aria-label="Notifications">
+                        <button type="button" class="relative text-gfa-grey hover:text-gfa-light focus:outline-none" aria-label="Notifications">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0a3 3 0 11-6 0m6 0H9"></path>
                             </svg>
@@ -53,13 +53,13 @@
                                     {{ nav_notification_count }}
                                 </span>
                             {% endif %}
-                        </a>
-                        <div class="pointer-events-none absolute right-0 top-full z-50 mt-2 hidden w-72 rounded-lg border border-gfa-grey/20 bg-black/95 p-3 text-sm text-gfa-grey shadow-xl group-hover:block">
+                        </button>
+                        <div class="absolute right-0 top-full z-50 mt-1 hidden w-72 rounded-lg border border-gfa-grey/20 bg-black/95 p-3 text-sm text-gfa-grey shadow-xl group-hover:block group-focus-within:block">
                             <p class="font-bold text-white mb-2">Notifications</p>
                             {% if nav_notifications %}
                                 <div class="space-y-2">
                                     {% for notification in nav_notifications %}
-                                        <a href="{{ url_for('main.p2p_trade_room', trade_id=notification.trade_id) }}" class="pointer-events-auto block rounded p-2 hover:bg-white/5">
+                                        <a href="{{ url_for('main.p2p_trade_room', trade_id=notification.trade_id) }}" class="block rounded p-2 hover:bg-white/5">
                                             <p class="text-white">Trade #{{ notification.trade_id }}</p>
                                             <p class="text-xs text-gfa-grey">{{ notification.reason }} | {{ notification.status }} / {{ notification.milestone }}</p>
                                         </a>
