@@ -42,7 +42,12 @@
             <!-- Desktop Menu -->
             <div class="hidden md:flex items-center">
                 {% if session.get('user_id') %}
-                    <span class="mr-6 text-sm text-gfa-grey whitespace-nowrap">Welcome {{ session.get('username', 'user') }}</span>
+                    <a href="{{ url_for('main.profile') }}" class="mr-6 text-sm text-gfa-grey whitespace-nowrap hover:text-gfa-light">
+                        Welcome {{ session.get('username', 'user') }}
+                        {% if current_user %}
+                            <span class="ml-2 text-gfa-light">{{ current_user.gems_balance }} 💎</span>
+                        {% endif %}
+                    </a>
                     <div class="group relative mr-6">
                         <button type="button" class="relative text-gfa-grey hover:text-gfa-light focus:outline-none" aria-label="Notifications">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -71,6 +76,8 @@
                         </div>
                     </div>
                     <a href="{{ url_for('main.dashboard') }}" class="mr-4 hover:text-gfa-light">Dashboard</a>
+                    <a href="{{ url_for('main.profile') }}" class="mr-4 hover:text-gfa-light">Profile</a>
+                    <a href="{{ url_for('main.activity') }}" class="mr-4 hover:text-gfa-light">Activity</a>
                 {% endif %}
                 <a href="{{ url_for('main.p2p') }}" class="mr-6 hover:text-gfa-light">P2P</a>
                 {% if session.get('user_id') %}
@@ -96,9 +103,16 @@
         <div id="mobile-menu" class="hidden md:hidden mt-4 bg-black/90 p-4 rounded-lg border border-gfa-grey/20">
             <div class="flex flex-col space-y-4">
                 {% if session.get('user_id') %}
-                    <div class="text-sm text-gfa-grey">Welcome {{ session.get('username', 'user') }}</div>
+                    <div class="text-sm text-gfa-grey">
+                        Welcome {{ session.get('username', 'user') }}
+                        {% if current_user %}
+                            <span class="ml-2 text-gfa-light">{{ current_user.gems_balance }} 💎</span>
+                        {% endif %}
+                    </div>
                     <a href="{{ url_for('main.dashboard') }}" class="hover:text-gfa-light">Notifications{% if nav_notification_count > 0 %} ({{ nav_notification_count }}){% endif %}</a>
                     <a href="{{ url_for('main.dashboard') }}" class="hover:text-gfa-light">Dashboard</a>
+                    <a href="{{ url_for('main.profile') }}" class="hover:text-gfa-light">Profile</a>
+                    <a href="{{ url_for('main.activity') }}" class="hover:text-gfa-light">Activity</a>
                 {% endif %}
                 <a href="{{ url_for('main.p2p') }}" class="hover:text-gfa-light">P2P</a>
                 {% if session.get('user_id') %}
@@ -144,6 +158,8 @@
             <div class="flex flex-wrap items-center justify-center gap-x-6 gap-y-3 mb-3 text-sm">
                 {% if session.get('user_id') %}
                     <a href="{{ url_for('main.dashboard') }}" class="hover:text-gfa-light">Dashboard</a>
+                    <a href="{{ url_for('main.profile') }}" class="hover:text-gfa-light">Profile</a>
+                    <a href="{{ url_for('main.activity') }}" class="hover:text-gfa-light">Activity</a>
                 {% endif %}
                 <a href="{{ url_for('main.p2p') }}" class="hover:text-gfa-light">P2P</a>
                 {% if session.get('user_id') %}

@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}Activity | Liquidity.spot{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-6">
+    <div class="bg-black/30 p-6 rounded-lg border border-gfa-grey/20">
+        <h1 class="text-3xl font-bold text-gfa-light mb-4">Activity</h1>
+        <p class="text-gfa-grey">
+            Recent trade, message, offer, and Gems bond activity connected to your account.
+        </p>
+    </div>
+
+    <div class="bg-black/30 p-6 rounded-lg border border-gfa-grey/20">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+            <div>
+                <p class="text-white font-bold">{{ user.username }}</p>
+                <p class="text-gfa-grey text-sm">{{ user.gems_balance }} 💎 available</p>
+            </div>
+            <div class="flex gap-3">
+                <a href="{{ url_for('main.profile') }}" class="bg-gfa-light text-gfa-dark px-4 py-2 rounded font-bold hover:bg-white transition">Profile</a>
+                <a href="{{ url_for('main.dashboard') }}" class="bg-black/40 text-white px-4 py-2 rounded font-bold hover:bg-black/60 transition">Dashboard</a>
+            </div>
+        </div>
+
+        {% if items %}
+            <div class="space-y-3">
+                {% for item in items %}
+                <a href="{{ item.href }}" class="block border border-gfa-grey/20 rounded-lg p-4 hover:bg-white/5 transition">
+                    <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+                        <div>
+                            <p class="text-sm uppercase tracking-wide text-gfa-grey">{{ item.category }}</p>
+                            <p class="text-lg font-bold text-white">{{ item.title }}</p>
+                            <p class="text-gfa-grey mt-1">{{ item.detail }}</p>
+                        </div>
+                        <div class="text-sm text-gfa-grey whitespace-nowrap">
+                            {{ item.when.strftime('%Y-%m-%d %H:%M') if item.when else 'Unknown time' }}
+                        </div>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-gfa-grey">No activity yet.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -27,11 +27,16 @@ def create_app(config_name='default'):
     @app.context_processor
     def inject_nav_notifications():
         if not session.get('user_id'):
-            return {'nav_notification_count': 0, 'nav_notifications': []}
+            return {
+                'nav_notification_count': 0,
+                'nav_notifications': [],
+                'current_user': None
+            }
 
-        from models import P2PTrade, P2PTradeParticipantState
+        from models import User, P2PTrade, P2PTradeParticipantState
 
         user_id = session['user_id']
+        current_user = User.query.get(user_id)
         trades = P2PTrade.query.filter(
             (P2PTrade.creator_id == user_id) | (P2PTrade.counterparty_id == user_id)
         ).order_by(P2PTrade.updated_at.desc()).all()
@@ -65,6 +70,7 @@ def create_app(config_name='default'):
                 })
 
         return {
+            'current_user': current_user,
             'nav_notification_count': len(notifications),
             'nav_notifications': notifications[:5]
         }

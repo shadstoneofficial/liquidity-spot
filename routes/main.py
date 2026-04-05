@@ -367,6 +367,98 @@ def dashboard():
         active_p2p_trades=active_p2p_trades
     )
 
+
+@main_bp.route('/profile')
+@login_required
+def profile():
+    user = User.query.get_or_404(session['user_id'])
+    p2p_offer_count = P2POffer.query.filter_by(creator_id=user.id).count()
+    p2p_trade_count = P2PTrade.query.filter(
+        (P2PTrade.creator_id == user.id) | (P2PTrade.counterparty_id == user.id)
+    ).count()
+    order_count = Order.query.filter_by(user_id=user.id).count()
+
+    return render_template(
+        'profile.html',
+        user=user,
+        p2p_offer_count=p2p_offer_count,
+        p2p_trade_count=p2p_trade_count,
+        order_count=order_count
+    )
+
+
+@main_bp.route('/activity')
+@login_required
+def activity():
+    user = User.query.get_or_404(session['user_id'])
+    items = []
+
+    offers = P2POffer.query.filter_by(creator_id=user.id).all()
+    for offer in offers:
+        items.append({
+            'when': offer.created_at,
+            'category': 'P2P Offer',
+            'title': f'Created P2P offer #{offer.id}',
+            'detail': f'{offer.side.upper()} {offer.amount_hns} HNS at {offer.price_btc_per_hns} BTC/HNS with {offer.gems_stake} Gems bond',
+            'href': url_for('main.p2p')
+        })
+
+    trades = P2PTrade.query.filter(
+        (P2PTrade.creator_id == user.id) | (P2PTrade.counterparty_id == user.id)
+    ).all()
+    for trade in trades:
+        items.append({
+            'when': trade.updated_at or trade.created_at,
+            'category': 'P2P Trade',
+            'title': f'Updated P2P trade #{trade.id}',
+            'detail': f'Status: {trade.status} | Milestone: {trade.milestone}',
+            'href': url_for('main.p2p_trade_room', trade_id=trade.id)
+        })
+        if trade.maker_bond_amount and trade.creator_id == user.id:
+            items.append({
+                'when': trade.maker_bond_released_at or trade.maker_bond_locked_at or trade.updated_at or trade.created_at,
+                'category': 'Gems Bond',
+                'title': f'Maker bond {trade.maker_bond_status} for trade #{trade.id}',
+                'detail': f'{trade.maker_bond_amount} Gems | Resolution: {trade.maker_bond_resolution or "pending"}',
+                'href': url_for('main.p2p_trade_room', trade_id=trade.id)
+            })
+
+    messages = P2PTradeMessage.query.filter_by(user_id=user.id).all()
+    for message in messages:
+        items.append({
+            'when': message.created_at,
+            'category': 'Message',
+            'title': f'Posted message in trade #{message.trade_id}',
+            'detail': message.message[:120],
+            'href': url_for('main.p2p_trade_room', trade_id=message.trade_id)
+        })
+
+    orders = Order.query.filter_by(user_id=user.id).all()
+    for order in orders:
+        items.append({
+            'when': order.created_at,
+            'category': 'Atomic Swap Order',
+            'title': f'Created atomic swap order #{order.id}',
+            'detail': f'{order.side.upper()} {order.amount_hns} HNS at {order.price_btc_per_hns} BTC/HNS',
+            'href': url_for('main.orders')
+        })
+
+    swaps = Swap.query.join(Order).filter(
+        (Order.user_id == user.id) | (Swap.matcher_id == user.id)
+    ).all()
+    for swap in swaps:
+        items.append({
+            'when': swap.created_at,
+            'category': 'Atomic Swap',
+            'title': f'Active atomic swap #{swap.id}',
+            'detail': f'Status: {swap.status}',
+            'href': url_for('main.swap_details', id=swap.id)
+        })
+
+    items.sort(key=lambda item: item['when'] or datetime.min, reverse=True)
+
+    return render_template('activity.html', user=user, items=items)
+
 @main_bp.route('/orders', methods=['GET', 'POST'])
 @login_required
 def orders():
