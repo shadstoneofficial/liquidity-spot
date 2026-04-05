@@ -66,6 +66,9 @@ class P2PTrade(db.Model):
     alice_lock_txid = db.Column(db.String(128))
     bob_lock_txid = db.Column(db.String(128))
     latest_note = db.Column(db.Text)
+    admin_review_status = db.Column(db.String(20), default='unreviewed')   # unreviewed / in_review / resolved
+    admin_resolution = db.Column(db.String(30))                            # completed / canceled / disputed / no_show / refunded
+    admin_notes = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     offer = db.relationship('P2POffer', backref='trade')

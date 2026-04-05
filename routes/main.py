@@ -147,6 +147,51 @@ def add_p2p_trade_message(trade_id):
     flash('Message added.', 'success')
     return redirect(url_for('main.p2p_trade_room', trade_id=trade.id))
 
+@main_bp.route('/p2p/trades/<int:trade_id>/action', methods=['POST'])
+@login_required
+def p2p_trade_action(trade_id):
+    trade = P2PTrade.query.get_or_404(trade_id)
+
+    if session['user_id'] not in [trade.creator_id, trade.counterparty_id]:
+        flash('You do not have permission to update this trade.', 'error')
+        return redirect(url_for('main.p2p'))
+
+    action = request.form.get('action')
+    note = (request.form.get('note') or '').strip()
+
+    action_map = {
+        'mark_payment_sent': ('matched', 'payment_sent', 'Payment or lock has been sent.'),
+        'mark_payment_received': ('matched', 'payment_received', 'Payment or lock has been confirmed.'),
+        'mark_released': ('matched', 'released', 'Funds released or claim step completed.'),
+        'mark_completed': ('completed', 'completed', 'Trade marked completed by a participant.'),
+        'mark_disputed': ('disputed', trade.milestone, 'Trade was marked disputed by a participant.'),
+        'mark_no_show': ('no_show', trade.milestone, 'Counterparty was marked as no-show.'),
+        'mark_canceled': ('canceled', trade.milestone, 'Trade was canceled by a participant.')
+    }
+
+    if action not in action_map:
+        flash('Unknown P2P action.', 'error')
+        return redirect(url_for('main.p2p_trade_room', trade_id=trade.id))
+
+    status, milestone, default_note = action_map[action]
+    trade.status = status
+    trade.milestone = milestone
+    trade.latest_note = note or default_note
+
+    if status in ['disputed', 'no_show', 'canceled']:
+        trade.admin_review_status = 'in_review'
+
+    if note:
+        db.session.add(P2PTradeMessage(
+            trade_id=trade.id,
+            user_id=session['user_id'],
+            message=f'[{action}] {note}'
+        ))
+
+    db.session.commit()
+    flash('Trade action recorded.', 'success')
+    return redirect(url_for('main.p2p_trade_room', trade_id=trade.id))
+
 @main_bp.route('/p2p/offers/<int:offer_id>/cancel', methods=['POST'])
 @login_required
 def cancel_p2p_offer(offer_id):
