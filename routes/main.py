@@ -59,6 +59,15 @@ def tutorial():
 def p2p():
     offers = P2POffer.query.filter_by(status='open').order_by(P2POffer.created_at.desc()).all()
     my_trades = []
+    try:
+        response = requests.get('https://api.coingecko.com/api/v3/simple/price?ids=handshake&vs_currencies=btc')
+        if response.status_code == 200:
+            current_price = response.json().get('handshake', {}).get('btc', 0.000000500000)
+        else:
+            current_price = 0.000000500000
+    except Exception as e:
+        print(f"CoinGecko API Error: {e}")
+        current_price = 0.000000500000
 
     if session.get('user_id'):
         my_trades = P2PTrade.query.filter(
@@ -66,7 +75,7 @@ def p2p():
             (P2PTrade.counterparty_id == session['user_id'])
         ).order_by(P2PTrade.updated_at.desc()).all()
 
-    return render_template('p2p.html', offers=offers, my_trades=my_trades)
+    return render_template('p2p.html', offers=offers, my_trades=my_trades, current_price=current_price)
 
 @main_bp.route('/p2p/offers', methods=['POST'])
 @login_required
