@@ -229,8 +229,6 @@ def cancel_p2p_offer(offer_id):
 
 @main_bp.route('/')
 def index():
-    if 'user_id' in session:
-        return redirect(url_for('main.dashboard'))
     return render_template('index.html')
 
 @main_bp.route('/dashboard')

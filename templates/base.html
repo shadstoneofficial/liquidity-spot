@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Liquidity.spot</title>
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/liquidity-spot-icon.png') }}">
-    <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/liquidity-spot-icon.png') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/liquidity-spot.png') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/liquidity-spot.png') }}">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -28,7 +28,7 @@
     <nav class="bg-black/20 p-4">
         <div class="container mx-auto flex justify-between items-center">
             <a href="{{ url_for('main.index') }}" class="flex items-center gap-3 text-2xl font-bold text-gfa-light hover:opacity-80 transition min-w-0">
-                <img src="{{ url_for('static', filename='img/liquidity-spot-icon.png') }}" alt="Liquidity.spot Logo" class="h-10 w-10 object-contain shrink-0">
+                <img src="{{ url_for('static', filename='img/liquidity-spot.png') }}" alt="Liquidity.spot Logo" class="h-10 w-10 object-contain shrink-0">
                 Liquidity.spot
             </a>
             
@@ -43,18 +43,19 @@
             <div class="hidden md:flex items-center">
                 {% if session.get('user_id') %}
                     <span class="mr-6 text-sm text-gfa-grey whitespace-nowrap">Welcome {{ session.get('username', 'user') }}</span>
+                    <a href="{{ url_for('main.dashboard') }}" class="mr-4 hover:text-gfa-light">Dashboard</a>
                 {% endif %}
                 <a href="{{ url_for('main.p2p') }}" class="mr-6 hover:text-gfa-light">P2P</a>
-                <a href="{{ url_for('main.tutorial') }}" class="mr-6 hover:text-gfa-light">Tutorial</a>
                 {% if session.get('user_id') %}
-                    <a href="{{ url_for('main.dashboard') }}" class="mr-4 hover:text-gfa-light">Dashboard</a>
                     <a href="{{ url_for('main.orders') }}" class="mr-4 hover:text-gfa-light">Atomic Swaps</a>
                     <span class="mr-4 text-[10px] uppercase tracking-wide bg-yellow-500/20 text-yellow-200 px-2 py-1 rounded">Experimental</span>
+                    <a href="{{ url_for('main.tutorial') }}" class="mr-6 hover:text-gfa-light">Tutorial</a>
                     {% if session.get('tier') == 'team' %}
                         <a href="{{ url_for('admin.credit') }}" class="mr-4 hover:text-gfa-light">Admin</a>
                     {% endif %}
                     <a href="{{ url_for('auth.logout') }}" class="text-red-400 hover:text-red-300">Logout</a>
                 {% else %}
+                    <a href="{{ url_for('main.tutorial') }}" class="mr-6 hover:text-gfa-light">Tutorial</a>
                     <a href="{{ url_for('auth.login') }}" class="bg-gfa-light text-gfa-dark px-4 py-2 rounded font-bold hover:bg-white transition">Login with GFAVIP</a>
                 {% endif %}
             </div>
@@ -65,17 +66,18 @@
             <div class="flex flex-col space-y-4">
                 {% if session.get('user_id') %}
                     <div class="text-sm text-gfa-grey">Welcome {{ session.get('username', 'user') }}</div>
+                    <a href="{{ url_for('main.dashboard') }}" class="hover:text-gfa-light">Dashboard</a>
                 {% endif %}
                 <a href="{{ url_for('main.p2p') }}" class="hover:text-gfa-light">P2P</a>
-                <a href="{{ url_for('main.tutorial') }}" class="hover:text-gfa-light">Tutorial</a>
                 {% if session.get('user_id') %}
-                    <a href="{{ url_for('main.dashboard') }}" class="hover:text-gfa-light">Dashboard</a>
                     <a href="{{ url_for('main.orders') }}" class="hover:text-gfa-light">Atomic Swaps (Experimental)</a>
+                    <a href="{{ url_for('main.tutorial') }}" class="hover:text-gfa-light">Tutorial</a>
                     {% if session.get('tier') == 'team' %}
                         <a href="{{ url_for('admin.credit') }}" class="hover:text-gfa-light">Admin</a>
                     {% endif %}
                     <a href="{{ url_for('auth.logout') }}" class="text-red-400 hover:text-red-300">Logout</a>
                 {% else %}
+                    <a href="{{ url_for('main.tutorial') }}" class="hover:text-gfa-light">Tutorial</a>
                     <a href="{{ url_for('auth.login') }}" class="bg-gfa-light text-gfa-dark px-4 py-2 rounded font-bold hover:bg-white transition text-center">Login with GFAVIP</a>
                 {% endif %}
             </div>
@@ -106,7 +108,26 @@
     </main>
 
     <footer class="bg-black/20 p-4 text-center text-gfa-grey mt-8">
-        <p>&copy; 2026 Liquidity.spot - P2P HNS/BTC Coordination</p>
+        <div class="container mx-auto">
+            <div class="flex flex-wrap items-center justify-center gap-x-6 gap-y-3 mb-3 text-sm">
+                {% if session.get('user_id') %}
+                    <a href="{{ url_for('main.dashboard') }}" class="hover:text-gfa-light">Dashboard</a>
+                {% endif %}
+                <a href="{{ url_for('main.p2p') }}" class="hover:text-gfa-light">P2P</a>
+                {% if session.get('user_id') %}
+                    <a href="{{ url_for('main.orders') }}" class="hover:text-gfa-light">Atomic Swaps</a>
+                    <a href="{{ url_for('main.tutorial') }}" class="hover:text-gfa-light">Tutorial</a>
+                    {% if session.get('tier') == 'team' %}
+                        <a href="{{ url_for('admin.credit') }}" class="hover:text-gfa-light">Admin</a>
+                    {% endif %}
+                    <a href="{{ url_for('auth.logout') }}" class="text-red-400 hover:text-red-300">Logout</a>
+                {% else %}
+                    <a href="{{ url_for('main.tutorial') }}" class="hover:text-gfa-light">Tutorial</a>
+                    <a href="{{ url_for('auth.login') }}" class="hover:text-gfa-light">Login with GFAVIP</a>
+                {% endif %}
+            </div>
+            <p>&copy; 2026 Liquidity.spot - P2P HNS/BTC Coordination</p>
+        </div>
     </footer>
 </body>
 </html>
