@@ -1,8 +1,9 @@
 from flask import Blueprint, render_template, request, flash, redirect, url_for, session
 from routes.auth import login_required
 from functools import wraps
-import requests
+from datetime import datetime
 from models import P2PTrade, db
+from services.gems_service import GemsServiceError, credit_gems as wallet_credit_gems, is_wallet_service_configured
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -37,33 +38,23 @@ def credit_gems():
     user_id = request.form.get('user_id')
     amount = request.form.get('amount')
     reason = request.form.get('reason')
-    
-    token = session.get('token')
-    
+
+    if not is_wallet_service_configured():
+        flash('Wallet Service API is not configured.', 'error')
+        return redirect(url_for('admin.credit'))
+
     try:
-        response = requests.post(
-            "https://wallet.gfavip.com/api/wallet/credit",
-            headers={
-                "Authorization": f"Bearer {token}",
-                "Content-Type": "application/json"
-            },
-            json={
-                "userId": user_id,
-                "amount": int(amount),
-                "reason": reason,
-                "metadata": {
-                    "source": "liquidity-spot-admin"
-                }
+        data = wallet_credit_gems(
+            user_id,
+            int(amount),
+            reason,
+            metadata={
+                'service': 'liquidity-spot',
+                'operation_type': 'admin_manual_credit'
             }
         )
-        
-        if response.status_code == 200:
-            data = response.json()
-            flash(f"Successfully credited {data.get('amountCredited')} gems to {data.get('userId')}", 'success')
-        else:
-            flash(f"Error: {response.text}", 'error')
-            
-    except Exception as e:
+        flash(f"Successfully credited {data.get('amountCredited')} gems to {data.get('userId')}", 'success')
+    except (ValueError, GemsServiceError) as e:
         flash(f"Request failed: {str(e)}", 'error')
         
     return redirect(url_for('admin.credit'))
@@ -77,12 +68,46 @@ def resolve_p2p_trade(trade_id):
     admin_resolution = request.form.get('admin_resolution') or trade.admin_resolution
     admin_notes = request.form.get('admin_notes')
     status = request.form.get('status') or trade.status
+    bond_action = request.form.get('bond_action') or 'none'
 
     trade.admin_review_status = admin_review_status
     trade.admin_resolution = admin_resolution
     trade.status = status
     if admin_notes is not None:
         trade.admin_notes = admin_notes
+
+    if bond_action == 'refund_full' and trade.maker_bond_status == 'locked' and trade.maker_bond_amount > 0:
+        if not is_wallet_service_configured():
+            flash('Wallet Service API is not configured, so the maker bond cannot be refunded yet.', 'error')
+            return redirect(url_for('admin.credit'))
+
+        try:
+            wallet_credit_gems(
+                trade.creator_id,
+                trade.maker_bond_amount,
+                f'Liquidity.spot admin refund for maker bond on P2P trade #{trade.id}',
+                metadata={
+                    'service': 'liquidity-spot',
+                    'trade_id': trade.id,
+                    'offer_id': trade.offer_id,
+                    'operation_type': 'maker_bond_refund_admin',
+                    'resolution_type': admin_resolution or status
+                }
+            )
+            trade.maker_bond_status = 'refunded'
+            trade.maker_bond_released_at = datetime.utcnow()
+            trade.maker_bond_resolution = 'refunded'
+            trade.maker_bond_error = None
+        except GemsServiceError as exc:
+            trade.maker_bond_error = str(exc)
+            flash(f'Could not refund maker bond: {exc}', 'error')
+            return redirect(url_for('admin.credit'))
+
+    if bond_action == 'slash_full' and trade.maker_bond_status == 'locked' and trade.maker_bond_amount > 0:
+        trade.maker_bond_status = 'slashed'
+        trade.maker_bond_released_at = datetime.utcnow()
+        trade.maker_bond_resolution = 'slashed_full'
+        trade.maker_bond_error = None
 
     db.session.commit()
     flash(f'P2P trade #{trade.id} admin review updated.', 'success')

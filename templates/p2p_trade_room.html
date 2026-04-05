@@ -70,6 +70,22 @@
                         <p><strong class="text-white">Created:</strong> {{ trade.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
                     </div>
                 </div>
+                <div class="mt-4 p-4 bg-black/40 rounded border border-gfa-grey/20 text-sm text-gfa-grey">
+                    <p><strong class="text-white">Maker Bond Status:</strong> {{ trade.maker_bond_status }}</p>
+                    <p><strong class="text-white">Maker Bond Amount:</strong> {{ trade.maker_bond_amount }} 💎</p>
+                    {% if trade.maker_bond_locked_at %}
+                    <p><strong class="text-white">Bond Locked:</strong> {{ trade.maker_bond_locked_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                    {% endif %}
+                    {% if trade.maker_bond_released_at %}
+                    <p><strong class="text-white">Bond Released:</strong> {{ trade.maker_bond_released_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                    {% endif %}
+                    {% if trade.maker_bond_resolution %}
+                    <p><strong class="text-white">Bond Resolution:</strong> {{ trade.maker_bond_resolution }}</p>
+                    {% endif %}
+                    {% if trade.maker_bond_error %}
+                    <p class="text-red-300"><strong class="text-white">Bond Error:</strong> {{ trade.maker_bond_error }}</p>
+                    {% endif %}
+                </div>
                 {% if trade.offer.notes %}
                 <div class="mt-4 p-4 bg-black/40 rounded border border-gfa-grey/20">
                     <p class="text-sm text-gfa-grey"><strong class="text-white">Offer Notes:</strong> {{ trade.offer.notes }}</p>

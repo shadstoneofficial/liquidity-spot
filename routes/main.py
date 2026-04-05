@@ -1,14 +1,55 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
-from models import db, User, Order, Swap, P2POffer, P2PTrade, P2PTradeMessage
+from models import db, User, Order, Swap, P2POffer, P2PTrade, P2PTradeMessage, P2PTradeParticipantState
 from routes.auth import login_required
 import secrets
 import hashlib
 import requests
 from decimal import Decimal, InvalidOperation
 from datetime import datetime
-from models import P2PTradeParticipantState
+from services.gems_service import (
+    GemsServiceError,
+    credit_gems as wallet_credit_gems,
+    deduct_gems as wallet_deduct_gems,
+    is_wallet_service_configured,
+)
 
 main_bp = Blueprint('main', __name__)
+
+
+def _build_gems_metadata(trade, operation_type, extra=None):
+    metadata = {
+        'service': 'liquidity-spot',
+        'trade_id': trade.id,
+        'offer_id': trade.offer_id,
+        'operation_type': operation_type,
+    }
+    if extra:
+        metadata.update(extra)
+    return metadata
+
+
+def _refund_maker_bond(trade, reason, resolution='refunded'):
+    if trade.maker_bond_status != 'locked' or trade.maker_bond_amount <= 0:
+        return False, 'No locked maker bond to refund.'
+
+    try:
+        wallet_credit_gems(
+            trade.creator_id,
+            trade.maker_bond_amount,
+            reason,
+            metadata=_build_gems_metadata(trade, 'maker_bond_refund', {
+                'bond_resolution': resolution
+            })
+        )
+    except GemsServiceError as exc:
+        trade.maker_bond_error = str(exc)
+        return False, str(exc)
+
+    trade.maker_bond_status = 'refunded'
+    trade.maker_bond_released_at = datetime.utcnow()
+    trade.maker_bond_resolution = resolution
+    trade.maker_bond_error = None
+    return True, None
 
 @main_bp.route('/tutorial')
 def tutorial():
@@ -68,6 +109,34 @@ def accept_p2p_offer(offer_id):
         flash('This P2P offer is no longer available.', 'error')
         return redirect(url_for('main.p2p'))
 
+    bond_status = 'none'
+    bond_locked_at = None
+    bond_error = None
+
+    if offer.gems_stake and offer.gems_stake > 0:
+        if not is_wallet_service_configured():
+            flash('This offer includes a Gems bond, but the wallet service is not configured yet.', 'error')
+            return redirect(url_for('main.p2p'))
+
+        try:
+            wallet_deduct_gems(
+                offer.creator_id,
+                offer.gems_stake,
+                f'Liquidity.spot maker bond locked for P2P offer #{offer.id}',
+                metadata={
+                    'service': 'liquidity-spot',
+                    'offer_id': offer.id,
+                    'operation_type': 'maker_bond_lock'
+                }
+            )
+            bond_status = 'locked'
+            bond_locked_at = datetime.utcnow()
+        except GemsServiceError as exc:
+            bond_status = 'failed'
+            bond_error = str(exc)
+            flash(f'Could not lock the maker Gems bond: {exc}', 'error')
+            return redirect(url_for('main.p2p'))
+
     trade = P2PTrade(
         offer_id=offer.id,
         creator_id=offer.creator_id,
@@ -75,7 +144,11 @@ def accept_p2p_offer(offer_id):
         status='matched',
         milestone='matched',
         latest_note='Trade matched. Use this room to coordinate next steps safely.',
-        last_actor_user_id=session['user_id']
+        last_actor_user_id=session['user_id'],
+        maker_bond_amount=offer.gems_stake or 0,
+        maker_bond_status=bond_status,
+        maker_bond_locked_at=bond_locked_at,
+        maker_bond_error=bond_error
     )
     offer.status = 'matched'
 
@@ -232,6 +305,16 @@ def p2p_trade_action(trade_id):
             user_id=session['user_id'],
             message=f'[{action}] {note}'
         ))
+
+    if action == 'mark_completed':
+        refunded, refund_error = _refund_maker_bond(
+            trade,
+            reason=f'Liquidity.spot maker bond refund for completed P2P trade #{trade.id}'
+        )
+        if refunded:
+            flash('Maker Gems bond refunded on completion.', 'success')
+        elif trade.maker_bond_amount > 0 and trade.maker_bond_status == 'locked':
+            flash(f'Trade completed, but maker bond refund still needs attention: {refund_error}', 'error')
 
     db.session.commit()
     flash('Trade action recorded.', 'success')

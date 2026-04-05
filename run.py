@@ -23,6 +23,12 @@ def ensure_p2p_schema():
         'admin_resolution': "VARCHAR(30)",
         'admin_notes': "TEXT",
         'last_actor_user_id': "VARCHAR(36)",
+        'maker_bond_amount': "INTEGER DEFAULT 0",
+        'maker_bond_status': "VARCHAR(20) DEFAULT 'none'",
+        'maker_bond_locked_at': "TIMESTAMP",
+        'maker_bond_released_at': "TIMESTAMP",
+        'maker_bond_resolution': "VARCHAR(30)",
+        'maker_bond_error': "TEXT",
     }
 
     with db.engine.begin() as connection:

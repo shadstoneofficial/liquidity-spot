@@ -13,6 +13,8 @@ class Config:
     SQLALCHEMY_DATABASE_URI = database_uri
     GFAVIP_SERVICE_NAME = os.environ.get('GFAVIP_SERVICE_NAME', 'liquidity-spot')
     REDIRECT_URI = os.environ.get('REDIRECT_URI', 'http://localhost:8000/callback')
+    GFAVIP_WALLET_API_KEY = os.environ.get('GFAVIP_WALLET_API_KEY')
+    GFAVIP_WALLET_BASE_URL = os.environ.get('GFAVIP_WALLET_BASE_URL', 'https://wallet.gfavip.com')
 
 class DevelopmentConfig(Config):
     DEBUG = True

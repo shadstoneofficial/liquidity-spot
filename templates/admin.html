@@ -43,6 +43,16 @@
                         </div>
                     </div>
                     <p class="text-gfa-grey text-sm mb-3"><strong class="text-white">Latest Note:</strong> {{ trade.latest_note or 'None' }}</p>
+                    <p class="text-gfa-grey text-sm mb-3">
+                        <strong class="text-white">Maker Bond:</strong>
+                        {{ trade.maker_bond_amount }} 💎 / {{ trade.maker_bond_status }}
+                        {% if trade.maker_bond_resolution %}
+                            / {{ trade.maker_bond_resolution }}
+                        {% endif %}
+                    </p>
+                    {% if trade.maker_bond_error %}
+                    <p class="text-red-300 text-sm mb-3"><strong class="text-white">Bond Error:</strong> {{ trade.maker_bond_error }}</p>
+                    {% endif %}
                     <form method="POST" action="{{ url_for('admin.resolve_p2p_trade', trade_id=trade.id) }}" class="space-y-3">
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                             <div>
@@ -69,6 +79,14 @@
                                     {% endfor %}
                                 </select>
                             </div>
+                        </div>
+                        <div>
+                            <label class="block text-gfa-grey mb-1">Maker Bond Action</label>
+                            <select name="bond_action" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white">
+                                <option value="none">None</option>
+                                <option value="refund_full">Refund Full Bond</option>
+                                <option value="slash_full">Slash Full Bond</option>
+                            </select>
                         </div>
                         <div>
                             <label class="block text-gfa-grey mb-1">Admin Notes</label>

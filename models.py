@@ -70,6 +70,12 @@ class P2PTrade(db.Model):
     admin_resolution = db.Column(db.String(30))                            # completed / canceled / disputed / no_show / refunded
     admin_notes = db.Column(db.Text)
     last_actor_user_id = db.Column(db.String(36))
+    maker_bond_amount = db.Column(db.Integer, default=0)
+    maker_bond_status = db.Column(db.String(20), default='none')           # none / locked / refunded / slashed / failed
+    maker_bond_locked_at = db.Column(db.DateTime)
+    maker_bond_released_at = db.Column(db.DateTime)
+    maker_bond_resolution = db.Column(db.String(30))                       # refunded / slashed_full / slashed_partial
+    maker_bond_error = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     offer = db.relationship('P2POffer', backref='trade')
