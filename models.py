@@ -40,3 +40,44 @@ class Swap(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     order = db.relationship('Order', backref='swap')
     matcher = db.relationship('User', foreign_keys=[matcher_id])
+
+class P2POffer(db.Model):
+    __tablename__ = 'p2p_offers'
+    id = db.Column(db.Integer, primary_key=True)
+    creator_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
+    side = db.Column(db.String(10), nullable=False)            # buy or sell HNS
+    amount_hns = db.Column(db.Numeric(precision=18, scale=8), nullable=False)
+    price_btc_per_hns = db.Column(db.Numeric(precision=18, scale=8), nullable=False)
+    gems_stake = db.Column(db.Integer, default=0)
+    payment_method = db.Column(db.String(50), default='Manual Wallet Transfer')
+    notes = db.Column(db.Text)
+    status = db.Column(db.String(20), default='open')          # open / matched / canceled
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    creator = db.relationship('User', backref='p2p_offers')
+
+class P2PTrade(db.Model):
+    __tablename__ = 'p2p_trades'
+    id = db.Column(db.Integer, primary_key=True)
+    offer_id = db.Column(db.Integer, db.ForeignKey('p2p_offers.id'), nullable=False)
+    creator_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
+    counterparty_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
+    status = db.Column(db.String(20), default='matched')       # matched / completed / canceled / disputed / no_show
+    milestone = db.Column(db.String(30), default='matched')    # matched / payment_sent / payment_received / released / completed
+    alice_lock_txid = db.Column(db.String(128))
+    bob_lock_txid = db.Column(db.String(128))
+    latest_note = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    offer = db.relationship('P2POffer', backref='trade')
+    creator = db.relationship('User', foreign_keys=[creator_id])
+    counterparty = db.relationship('User', foreign_keys=[counterparty_id])
+
+class P2PTradeMessage(db.Model):
+    __tablename__ = 'p2p_trade_messages'
+    id = db.Column(db.Integer, primary_key=True)
+    trade_id = db.Column(db.Integer, db.ForeignKey('p2p_trades.id'), nullable=False)
+    user_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    trade = db.relationship('P2PTrade', backref='messages')
+    user = db.relationship('User')

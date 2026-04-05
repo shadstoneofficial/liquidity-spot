@@ -67,5 +67,155 @@
             <strong>Note:</strong> The current HTLC-based trustless swap screens are still useful for testing and learning, but they remain experimental. Human P2P is intended to become the main production-facing path.
         </p>
     </div>
+
+    {% if session.get('user_id') %}
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-1 bg-black/30 p-6 rounded-lg border border-gfa-grey/20">
+            <h2 class="text-2xl font-bold text-white mb-4">Create P2P Offer</h2>
+            <form method="POST" action="{{ url_for('main.create_p2p_offer') }}" class="space-y-4">
+                <div>
+                    <label class="block text-gfa-grey mb-1">Side</label>
+                    <select name="side" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white">
+                        <option value="buy">Buy HNS (Sell BTC)</option>
+                        <option value="sell">Sell HNS (Buy BTC)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gfa-grey mb-1">Amount (HNS)</label>
+                    <input type="number" step="0.00000001" name="amount_hns" required class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white" placeholder="1000">
+                </div>
+                <div>
+                    <label class="block text-gfa-grey mb-1">Price (BTC per HNS)</label>
+                    <input type="text" inputmode="decimal" name="price" required class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white" placeholder="0.00000009">
+                </div>
+                <div>
+                    <label class="block text-gfa-grey mb-1">Payment Method</label>
+                    <input type="text" name="payment_method" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white" value="Manual Wallet Transfer">
+                </div>
+                <div>
+                    <label class="block text-gfa-grey mb-1">Gems Bond (Optional)</label>
+                    <input type="number" name="gems_stake" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white" placeholder="25">
+                </div>
+                <div>
+                    <label class="block text-gfa-grey mb-1">Notes</label>
+                    <textarea name="notes" rows="4" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white" placeholder="Preferred contact pace, wallet expectations, confirmation preference, etc."></textarea>
+                </div>
+                <button type="submit" class="w-full bg-gfa-light text-gfa-dark font-bold py-2 rounded hover:bg-white transition">
+                    Post P2P Offer
+                </button>
+            </form>
+        </div>
+
+        <div class="lg:col-span-2 bg-black/30 p-6 rounded-lg border border-gfa-grey/20">
+            <h2 class="text-2xl font-bold text-white mb-4">Open P2P Offers</h2>
+            {% if offers %}
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left min-w-[760px]">
+                        <thead>
+                            <tr class="border-b border-gfa-grey/30">
+                                <th class="p-2 whitespace-nowrap">User</th>
+                                <th class="p-2 whitespace-nowrap">Side</th>
+                                <th class="p-2 whitespace-nowrap">Amount (HNS)</th>
+                                <th class="p-2 whitespace-nowrap">Price (BTC)</th>
+                                <th class="p-2 whitespace-nowrap">Method</th>
+                                <th class="p-2 whitespace-nowrap">Bond</th>
+                                <th class="p-2 whitespace-nowrap">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for offer in offers %}
+                            <tr class="border-b border-gfa-grey/10 hover:bg-white/5">
+                                <td class="p-2 whitespace-nowrap">
+                                    {{ offer.creator.username }}
+                                    {% if offer.creator_id == session.get('user_id') %}
+                                        <span class="text-xs bg-gfa-grey/20 px-1 rounded ml-1">(You)</span>
+                                    {% endif %}
+                                </td>
+                                <td class="p-2 uppercase {{ 'text-green-400' if offer.side == 'buy' else 'text-red-400' }}">{{ offer.side }}</td>
+                                <td class="p-2 whitespace-nowrap">{{ offer.amount_hns }}</td>
+                                <td class="p-2 whitespace-nowrap">{{ '%.8f'|format(offer.price_btc_per_hns) }}</td>
+                                <td class="p-2 whitespace-nowrap">{{ offer.payment_method }}</td>
+                                <td class="p-2 whitespace-nowrap">{{ offer.gems_stake }} 💎</td>
+                                <td class="p-2 whitespace-nowrap">
+                                    {% if offer.creator_id == session.get('user_id') %}
+                                        <form method="POST" action="{{ url_for('main.cancel_p2p_offer', offer_id=offer.id) }}">
+                                            <button type="submit" class="text-red-400 hover:text-red-300 text-xs">Cancel</button>
+                                        </form>
+                                    {% else %}
+                                        <form method="POST" action="{{ url_for('main.accept_p2p_offer', offer_id=offer.id) }}">
+                                            <button type="submit" class="bg-gfa-blue text-white text-xs px-3 py-1 rounded hover:bg-blue-600">Open Trade Room</button>
+                                        </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% if offer.notes %}
+                            <tr class="border-b border-gfa-grey/10">
+                                <td colspan="7" class="p-2 text-sm text-gfa-grey">
+                                    <strong class="text-white">Notes:</strong> {{ offer.notes }}
+                                </td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-gfa-grey">No open P2P offers yet.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="bg-black/30 p-6 rounded-lg border border-gfa-grey/20">
+        <h2 class="text-2xl font-bold text-white mb-4">My P2P Trades</h2>
+        {% if my_trades %}
+            <div class="overflow-x-auto">
+                <table class="w-full text-left min-w-[700px]">
+                    <thead>
+                        <tr class="border-b border-gfa-grey/30">
+                            <th class="p-2 whitespace-nowrap">Trade</th>
+                            <th class="p-2 whitespace-nowrap">Role</th>
+                            <th class="p-2 whitespace-nowrap">Milestone</th>
+                            <th class="p-2 whitespace-nowrap">Status</th>
+                            <th class="p-2 whitespace-nowrap">Updated</th>
+                            <th class="p-2 whitespace-nowrap">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for trade in my_trades %}
+                        <tr class="border-b border-gfa-grey/10 hover:bg-white/5">
+                            <td class="p-2 whitespace-nowrap">#{{ trade.id }} / Offer #{{ trade.offer_id }}</td>
+                            <td class="p-2 whitespace-nowrap">
+                                {% if trade.creator_id == session.get('user_id') %}
+                                    Offer Creator
+                                {% else %}
+                                    Counterparty
+                                {% endif %}
+                            </td>
+                            <td class="p-2 whitespace-nowrap">{{ trade.milestone }}</td>
+                            <td class="p-2 whitespace-nowrap">{{ trade.status }}</td>
+                            <td class="p-2 whitespace-nowrap">{{ trade.updated_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td class="p-2 whitespace-nowrap">
+                                <a href="{{ url_for('main.p2p_trade_room', trade_id=trade.id) }}" class="text-gfa-blue hover:text-blue-300">Enter Room</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="text-gfa-grey">No P2P trades yet.</p>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="bg-black/30 p-6 rounded-lg border border-gfa-grey/20">
+        <h2 class="text-2xl font-bold text-white mb-3">Login Required To Start</h2>
+        <p class="text-gfa-grey mb-4">
+            You can review the Human P2P concept here, but you need to log in with GFAVIP to create offers, accept offers, and enter trade rooms.
+        </p>
+        <a href="{{ url_for('auth.login') }}" class="inline-block bg-gfa-light text-gfa-dark px-4 py-2 rounded font-bold hover:bg-white transition">
+            Login with GFAVIP
+        </a>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

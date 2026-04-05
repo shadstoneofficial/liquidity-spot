@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-6">
+    <div class="bg-black/30 p-6 rounded-lg border border-gfa-grey/20">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+                <h1 class="text-3xl font-bold text-gfa-light">P2P Trade Room #{{ trade.id }}</h1>
+                <p class="text-gfa-grey mt-2">
+                    Offer #{{ trade.offer_id }} | {{ trade.offer.side|upper }} {{ trade.offer.amount_hns }} HNS at {{ '%.8f'|format(trade.offer.price_btc_per_hns) }} BTC/HNS
+                </p>
+            </div>
+            <div class="flex gap-3 text-sm">
+                <span class="bg-blue-500/20 text-blue-300 px-3 py-1 rounded uppercase font-bold">{{ trade.status }}</span>
+                <span class="bg-gfa-light/20 text-gfa-light px-3 py-1 rounded font-bold">{{ trade.milestone }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2 space-y-6">
+            <div class="bg-black/30 p-6 rounded-lg border border-gfa-grey/20">
+                <h2 class="text-2xl font-bold text-white mb-4">Trade Overview</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-gfa-grey">
+                    <div>
+                        <p><strong class="text-white">Offer Creator:</strong> {{ trade.creator.username }}</p>
+                        <p><strong class="text-white">Counterparty:</strong> {{ trade.counterparty.username }}</p>
+                        <p><strong class="text-white">Payment Method:</strong> {{ trade.offer.payment_method }}</p>
+                        <p><strong class="text-white">Gems Bond:</strong> {{ trade.offer.gems_stake }} 💎</p>
+                    </div>
+                    <div>
+                        <p><strong class="text-white">Your Position:</strong>
+                            {% if is_creator %}Offer Creator{% else %}Counterparty{% endif %}
+                        </p>
+                        <p><strong class="text-white">Offer Side:</strong> {{ trade.offer.side|upper }}</p>
+                        <p><strong class="text-white">Total BTC:</strong> {{ '%.8f'|format(trade.offer.amount_hns * trade.offer.price_btc_per_hns) }}</p>
+                        <p><strong class="text-white">Created:</strong> {{ trade.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                    </div>
+                </div>
+                {% if trade.offer.notes %}
+                <div class="mt-4 p-4 bg-black/40 rounded border border-gfa-grey/20">
+                    <p class="text-sm text-gfa-grey"><strong class="text-white">Offer Notes:</strong> {{ trade.offer.notes }}</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="bg-black/30 p-6 rounded-lg border border-gfa-grey/20">
+                <h2 class="text-2xl font-bold text-white mb-4">Shared Milestone Tracker</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-2 text-gfa-grey">
+                        <p class="{{ 'text-gfa-light font-bold' if trade.milestone == 'matched' else '' }}">1. Matched</p>
+                        <p class="{{ 'text-gfa-light font-bold' if trade.milestone == 'payment_sent' else '' }}">2. Payment / Lock Sent</p>
+                        <p class="{{ 'text-gfa-light font-bold' if trade.milestone == 'payment_received' else '' }}">3. Payment / Lock Confirmed</p>
+                        <p class="{{ 'text-gfa-light font-bold' if trade.milestone == 'released' else '' }}">4. Released / Claimed</p>
+                        <p class="{{ 'text-gfa-light font-bold' if trade.milestone == 'completed' else '' }}">5. Completed</p>
+                    </div>
+                    <div class="space-y-3">
+                        <p class="text-gfa-grey text-sm">
+                            Use this room to coordinate safely. Both sides should only advance the milestone when they have independently verified the other party's action.
+                        </p>
+                        <p class="text-sm text-gfa-grey">
+                            <strong class="text-white">Alice Lock TXID:</strong> {{ trade.alice_lock_txid or 'Not submitted yet' }}
+                        </p>
+                        <p class="text-sm text-gfa-grey">
+                            <strong class="text-white">Bob Lock TXID:</strong> {{ trade.bob_lock_txid or 'Not submitted yet' }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-black/30 p-6 rounded-lg border border-gfa-grey/20">
+                <h2 class="text-2xl font-bold text-white mb-4">Messages</h2>
+                <div class="space-y-3 max-h-[420px] overflow-y-auto pr-2">
+                    {% if trade.messages %}
+                        {% for message in trade.messages|sort(attribute='created_at') %}
+                        <div class="bg-black/40 rounded p-4 border border-gfa-grey/10">
+                            <div class="flex justify-between gap-4 text-sm mb-2">
+                                <span class="font-bold text-white">{{ message.user.username }}</span>
+                                <span class="text-gfa-grey">{{ message.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                            </div>
+                            <p class="text-gfa-grey whitespace-pre-wrap">{{ message.message }}</p>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-gfa-grey">No messages yet.</p>
+                    {% endif %}
+                </div>
+
+                <form method="POST" action="{{ url_for('main.add_p2p_trade_message', trade_id=trade.id) }}" class="mt-4 space-y-3">
+                    <textarea name="message" rows="4" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-3 text-white" placeholder="Share a TXID, ask for confirmation, or record what happened next."></textarea>
+                    <button type="submit" class="bg-gfa-blue text-white font-bold px-4 py-2 rounded hover:bg-blue-600 transition">
+                        Post Message
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="space-y-6">
+            <div class="bg-black/30 p-6 rounded-lg border border-gfa-grey/20">
+                <h2 class="text-2xl font-bold text-white mb-4">Update Trade</h2>
+                <form method="POST" action="{{ url_for('main.update_p2p_trade', trade_id=trade.id) }}" class="space-y-4">
+                    <div>
+                        <label class="block text-gfa-grey mb-1">Milestone</label>
+                        <select name="milestone" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white">
+                            {% for option in ['matched', 'payment_sent', 'payment_received', 'released', 'completed'] %}
+                            <option value="{{ option }}" {{ 'selected' if trade.milestone == option else '' }}>{{ option }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-gfa-grey mb-1">Trade Status</label>
+                        <select name="status" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white">
+                            {% for option in ['matched', 'completed', 'canceled', 'disputed', 'no_show'] %}
+                            <option value="{{ option }}" {{ 'selected' if trade.status == option else '' }}>{{ option }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-gfa-grey mb-1">Alice Lock TXID</label>
+                        <input type="text" name="alice_lock_txid" value="{{ trade.alice_lock_txid or '' }}" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-gfa-grey mb-1">Bob Lock TXID</label>
+                        <input type="text" name="bob_lock_txid" value="{{ trade.bob_lock_txid or '' }}" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-gfa-grey mb-1">Latest Note</label>
+                        <textarea name="latest_note" rows="4" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white">{{ trade.latest_note or '' }}</textarea>
+                    </div>
+                    <button type="submit" class="w-full bg-gfa-light text-gfa-dark font-bold py-2 rounded hover:bg-white transition">
+                        Save Update
+                    </button>
+                </form>
+            </div>
+
+            <div class="bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-6 text-yellow-100">
+                <h2 class="text-xl font-bold text-white mb-3">Safety Reminder</h2>
+                <ul class="list-disc list-inside space-y-2 text-sm">
+                    <li>Do not mark a milestone complete until you have verified it yourself.</li>
+                    <li>Use TXIDs and messages to create an audit trail.</li>
+                    <li>If anything feels wrong, pause and mark the trade disputed instead of rushing ahead.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

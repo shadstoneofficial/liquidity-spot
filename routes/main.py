@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
-from models import db, User, Order, Swap
+from models import db, User, Order, Swap, P2POffer, P2PTrade, P2PTradeMessage
 from routes.auth import login_required
 import secrets
 import hashlib
@@ -13,7 +13,157 @@ def tutorial():
 
 @main_bp.route('/p2p')
 def p2p():
-    return render_template('p2p.html')
+    offers = P2POffer.query.filter_by(status='open').order_by(P2POffer.created_at.desc()).all()
+    my_trades = []
+
+    if session.get('user_id'):
+        my_trades = P2PTrade.query.filter(
+            (P2PTrade.creator_id == session['user_id']) |
+            (P2PTrade.counterparty_id == session['user_id'])
+        ).order_by(P2PTrade.updated_at.desc()).all()
+
+    return render_template('p2p.html', offers=offers, my_trades=my_trades)
+
+@main_bp.route('/p2p/offers', methods=['POST'])
+@login_required
+def create_p2p_offer():
+    side = request.form.get('side')
+    amount_hns = request.form.get('amount_hns')
+    price = request.form.get('price')
+    gems_stake = request.form.get('gems_stake') or 0
+    payment_method = request.form.get('payment_method') or 'Manual Wallet Transfer'
+    notes = request.form.get('notes')
+
+    try:
+        offer = P2POffer(
+            creator_id=session['user_id'],
+            side=side,
+            amount_hns=float(amount_hns),
+            price_btc_per_hns=float(price),
+            gems_stake=int(gems_stake),
+            payment_method=payment_method,
+            notes=notes
+        )
+        db.session.add(offer)
+        db.session.commit()
+        flash('P2P offer created successfully.', 'success')
+    except Exception as exc:
+        flash(f'Error creating P2P offer: {exc}', 'error')
+
+    return redirect(url_for('main.p2p'))
+
+@main_bp.route('/p2p/offers/<int:offer_id>/accept', methods=['POST'])
+@login_required
+def accept_p2p_offer(offer_id):
+    offer = P2POffer.query.get_or_404(offer_id)
+
+    if offer.creator_id == session['user_id']:
+        flash('You cannot accept your own P2P offer.', 'error')
+        return redirect(url_for('main.p2p'))
+
+    if offer.status != 'open':
+        flash('This P2P offer is no longer available.', 'error')
+        return redirect(url_for('main.p2p'))
+
+    trade = P2PTrade(
+        offer_id=offer.id,
+        creator_id=offer.creator_id,
+        counterparty_id=session['user_id'],
+        status='matched',
+        milestone='matched',
+        latest_note='Trade matched. Use this room to coordinate next steps safely.'
+    )
+    offer.status = 'matched'
+
+    db.session.add(trade)
+    db.session.commit()
+
+    flash('P2P trade room created.', 'success')
+    return redirect(url_for('main.p2p_trade_room', trade_id=trade.id))
+
+@main_bp.route('/p2p/trades/<int:trade_id>')
+@login_required
+def p2p_trade_room(trade_id):
+    trade = P2PTrade.query.get_or_404(trade_id)
+
+    if session['user_id'] not in [trade.creator_id, trade.counterparty_id]:
+        flash('You do not have permission to view this trade.', 'error')
+        return redirect(url_for('main.p2p'))
+
+    is_creator = session['user_id'] == trade.creator_id
+    return render_template('p2p_trade_room.html', trade=trade, is_creator=is_creator)
+
+@main_bp.route('/p2p/trades/<int:trade_id>/update', methods=['POST'])
+@login_required
+def update_p2p_trade(trade_id):
+    trade = P2PTrade.query.get_or_404(trade_id)
+
+    if session['user_id'] not in [trade.creator_id, trade.counterparty_id]:
+        flash('You do not have permission to update this trade.', 'error')
+        return redirect(url_for('main.p2p'))
+
+    milestone = request.form.get('milestone')
+    status = request.form.get('status')
+    alice_lock_txid = request.form.get('alice_lock_txid')
+    bob_lock_txid = request.form.get('bob_lock_txid')
+    latest_note = request.form.get('latest_note')
+
+    if milestone:
+        trade.milestone = milestone
+    if status:
+        trade.status = status
+    if alice_lock_txid:
+        trade.alice_lock_txid = alice_lock_txid
+    if bob_lock_txid:
+        trade.bob_lock_txid = bob_lock_txid
+    if latest_note:
+        trade.latest_note = latest_note
+
+    db.session.commit()
+    flash('P2P trade updated.', 'success')
+    return redirect(url_for('main.p2p_trade_room', trade_id=trade.id))
+
+@main_bp.route('/p2p/trades/<int:trade_id>/message', methods=['POST'])
+@login_required
+def add_p2p_trade_message(trade_id):
+    trade = P2PTrade.query.get_or_404(trade_id)
+
+    if session['user_id'] not in [trade.creator_id, trade.counterparty_id]:
+        flash('You do not have permission to post in this trade.', 'error')
+        return redirect(url_for('main.p2p'))
+
+    message = (request.form.get('message') or '').strip()
+    if not message:
+        flash('Message cannot be empty.', 'error')
+        return redirect(url_for('main.p2p_trade_room', trade_id=trade.id))
+
+    db.session.add(P2PTradeMessage(
+        trade_id=trade.id,
+        user_id=session['user_id'],
+        message=message
+    ))
+    db.session.commit()
+
+    flash('Message added.', 'success')
+    return redirect(url_for('main.p2p_trade_room', trade_id=trade.id))
+
+@main_bp.route('/p2p/offers/<int:offer_id>/cancel', methods=['POST'])
+@login_required
+def cancel_p2p_offer(offer_id):
+    offer = P2POffer.query.get_or_404(offer_id)
+
+    if offer.creator_id != session['user_id']:
+        flash('You can only cancel your own P2P offers.', 'error')
+        return redirect(url_for('main.p2p'))
+
+    if offer.status != 'open':
+        flash('This P2P offer can no longer be canceled.', 'error')
+        return redirect(url_for('main.p2p'))
+
+    offer.status = 'canceled'
+    db.session.commit()
+    flash('P2P offer canceled.', 'success')
+    return redirect(url_for('main.p2p'))
 
 @main_bp.route('/')
 def index():
