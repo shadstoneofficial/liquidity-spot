@@ -2,70 +2,21 @@
 
 {% block content %}
 <div class="max-w-5xl mx-auto space-y-8">
-    <div class="bg-black/30 p-8 rounded-lg border border-gfa-grey/20">
-        <div class="inline-flex items-center gap-2 bg-gfa-light/20 text-gfa-light text-sm font-bold px-3 py-1 rounded-full mb-4">
-            Primary Mode
-        </div>
-        <h1 class="text-4xl font-bold text-gfa-light mb-4">Human P2P Swaps</h1>
-        <p class="text-lg text-white mb-4">
-            This is the safer near-term direction for `Liquidity.spot`: a non-custodial, human-to-human marketplace for coordinating HNS/BTC swaps.
-        </p>
-        <p class="text-gfa-grey max-w-3xl">
-            The platform helps counterparties find each other, agree on price, understand Alice/Bob roles, and track trade progress without pretending the current atomic-swap execution flow is mainnet-ready.
-        </p>
-    </div>
-
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div class="bg-black/30 p-6 rounded-lg border border-gfa-grey/20">
-            <h2 class="text-2xl font-bold text-white mb-4">What This Mode Means</h2>
-            <ul class="list-disc list-inside text-gfa-grey space-y-2">
-                <li>Human-to-human matching and negotiation</li>
-                <li>Shared trade room and milestone tracking</li>
-                <li>TXID submission, notes, and confirmations</li>
-                <li>Reputation and Gems as accountability tools</li>
-                <li>No platform custody of user funds</li>
-            </ul>
-        </div>
-
-        <div class="bg-black/30 p-6 rounded-lg border border-gfa-grey/20">
-            <h2 class="text-2xl font-bold text-white mb-4">Build Status</h2>
-            <ul class="list-disc list-inside text-gfa-grey space-y-2">
-                <li>Concept approved as the main product direction</li>
-                <li>Trade-room UX still to be built</li>
-                <li>Milestones, chat, disputes, and TXID flow coming next</li>
-                <li>Trustless atomic swap flow remains available separately in testing mode</li>
-            </ul>
-        </div>
-    </div>
-
-    <div class="bg-blue-900/20 border border-blue-500/30 rounded-lg p-6">
-        <h2 class="text-2xl font-bold text-white mb-3">Near-Term Product Plan</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-gfa-grey">
+    <div class="bg-black/30 p-6 rounded-lg border border-gfa-grey/20">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-                <p class="font-bold text-white mb-2">Phase 1</p>
-                <ul class="list-disc list-inside space-y-1">
-                    <li>P2P trade room</li>
-                    <li>Milestone checklist</li>
-                    <li>Manual TXID submission</li>
-                    <li>No-show / cancel flows</li>
-                </ul>
+                <div class="inline-flex items-center gap-2 bg-gfa-light/20 text-gfa-light text-sm font-bold px-3 py-1 rounded-full mb-3">
+                    P2P Board
+                </div>
+                <h1 class="text-4xl font-bold text-gfa-light">Human P2P Swaps</h1>
+                <p class="text-gfa-grey mt-2 max-w-3xl">
+                    Post offers, match with another user, and coordinate the trade in a shared room using the same Alice/Bob language as the trustless flow.
+                </p>
             </div>
-            <div>
-                <p class="font-bold text-white mb-2">Phase 2</p>
-                <ul class="list-disc list-inside space-y-1">
-                    <li>Disputes and moderation tools</li>
-                    <li>Gems stake and penalty rules</li>
-                    <li>Counterparty notes / chat</li>
-                    <li>Explorer verification support</li>
-                </ul>
+            <div class="bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-4 text-sm text-yellow-100 md:max-w-sm">
+                <strong>Note:</strong> This is the functional P2P board. The deeper product background and trustless-testing explanation are shown lower on the page.
             </div>
         </div>
-    </div>
-
-    <div class="bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-6 text-yellow-100">
-        <p>
-            <strong>Note:</strong> The current HTLC-based trustless swap screens are still useful for testing and learning, but they remain experimental. Human P2P is intended to become the main production-facing path.
-        </p>
     </div>
 
     {% if session.get('user_id') %}
@@ -131,7 +82,16 @@
                                         <span class="text-xs bg-gfa-grey/20 px-1 rounded ml-1">(You)</span>
                                     {% endif %}
                                 </td>
-                                <td class="p-2 uppercase {{ 'text-green-400' if offer.side == 'buy' else 'text-red-400' }}">{{ offer.side }}</td>
+                                <td class="p-2 uppercase {{ 'text-green-400' if offer.side == 'buy' else 'text-red-400' }}">
+                                    {{ offer.side }}
+                                    <span class="block text-xs text-gfa-grey normal-case">
+                                        {% if offer.side == 'sell' %}
+                                            Creator is Alice
+                                        {% else %}
+                                            Creator is Bob
+                                        {% endif %}
+                                    </span>
+                                </td>
                                 <td class="p-2 whitespace-nowrap">{{ offer.amount_hns }}</td>
                                 <td class="p-2 whitespace-nowrap">{{ '%.8f'|format(offer.price_btc_per_hns) }}</td>
                                 <td class="p-2 whitespace-nowrap">{{ offer.payment_method }}</td>
@@ -185,10 +145,18 @@
                         <tr class="border-b border-gfa-grey/10 hover:bg-white/5">
                             <td class="p-2 whitespace-nowrap">#{{ trade.id }} / Offer #{{ trade.offer_id }}</td>
                             <td class="p-2 whitespace-nowrap">
-                                {% if trade.creator_id == session.get('user_id') %}
-                                    Offer Creator
+                                {% if trade.offer.side == 'sell' %}
+                                    {% if trade.creator_id == session.get('user_id') %}
+                                        Alice
+                                    {% else %}
+                                        Bob
+                                    {% endif %}
                                 {% else %}
-                                    Counterparty
+                                    {% if trade.creator_id == session.get('user_id') %}
+                                        Bob
+                                    {% else %}
+                                        Alice
+                                    {% endif %}
                                 {% endif %}
                             </td>
                             <td class="p-2 whitespace-nowrap">{{ trade.milestone }}</td>
@@ -217,5 +185,28 @@
         </a>
     </div>
     {% endif %}
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-black/30 p-6 rounded-lg border border-gfa-grey/20">
+            <h2 class="text-2xl font-bold text-white mb-4">How Alice & Bob Work Here</h2>
+            <ul class="list-disc list-inside text-gfa-grey space-y-2">
+                <li><strong class="text-white">Alice</strong> is always the seller of HNS.</li>
+                <li><strong class="text-white">Bob</strong> is always the buyer of HNS.</li>
+                <li>If an offer says <strong class="text-white">Sell HNS</strong>, the offer creator is Alice.</li>
+                <li>If an offer says <strong class="text-white">Buy HNS</strong>, the offer creator is Bob.</li>
+            </ul>
+        </div>
+
+        <div class="bg-black/30 p-6 rounded-lg border border-gfa-grey/20">
+            <h2 class="text-2xl font-bold text-white mb-4">Why P2P Is Here</h2>
+            <ul class="list-disc list-inside text-gfa-grey space-y-2">
+                <li>Shared trade room and milestone tracking</li>
+                <li>TXID submission, notes, and confirmations</li>
+                <li>Disputes and moderation support</li>
+                <li>No platform custody of funds</li>
+                <li>Trustless HTLC tools remain available separately in testing mode</li>
+            </ul>
+        </div>
+    </div>
 </div>
 {% endblock %}

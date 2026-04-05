@@ -91,7 +91,23 @@ def p2p_trade_room(trade_id):
         return redirect(url_for('main.p2p'))
 
     is_creator = session['user_id'] == trade.creator_id
-    return render_template('p2p_trade_room.html', trade=trade, is_creator=is_creator)
+    if trade.offer.side == 'sell':
+        alice_user = trade.creator
+        bob_user = trade.counterparty
+    else:
+        alice_user = trade.counterparty
+        bob_user = trade.creator
+
+    current_role = 'Alice' if session['user_id'] == alice_user.id else 'Bob'
+
+    return render_template(
+        'p2p_trade_room.html',
+        trade=trade,
+        is_creator=is_creator,
+        alice_user=alice_user,
+        bob_user=bob_user,
+        current_role=current_role
+    )
 
 @main_bp.route('/p2p/trades/<int:trade_id>/update', methods=['POST'])
 @login_required
