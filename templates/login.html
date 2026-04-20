@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Login | Liquidity.spot{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+    <div class="bg-black/30 p-8 rounded-lg border border-gfa-grey/20">
+        <div class="inline-flex items-center gap-2 bg-gfa-light/20 text-gfa-light text-sm font-bold px-3 py-1 rounded-full mb-4">
+            Login
+        </div>
+        <h1 class="text-4xl font-bold text-gfa-light mb-4">Login With GFAVIP</h1>
+        <p class="text-lg text-white mb-3">
+            `Liquidity.spot` uses GFAVIP for account login and identity.
+        </p>
+        <p class="text-gfa-grey max-w-3xl">
+            When you continue, you will be redirected to GFAVIP to sign in and approve access. After login, you will be sent back here with your account details, tier, and Gems balance synced into the app.
+        </p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-black/30 p-6 rounded-lg border border-gfa-grey/20">
+            <h2 class="text-2xl font-bold text-white mb-4">Why We Use GFAVIP</h2>
+            <ul class="list-disc list-inside text-gfa-grey space-y-2">
+                <li>Single sign-on for your GFAVIP identity</li>
+                <li>Account tier sync for app access</li>
+                <li>Gems balance sync for marketplace features</li>
+                <li>Cleaner wallet-service integration for future bond enforcement</li>
+            </ul>
+        </div>
+
+        <div class="bg-black/30 p-6 rounded-lg border border-gfa-grey/20">
+            <h2 class="text-2xl font-bold text-white mb-4">What Happens Next</h2>
+            <ul class="list-disc list-inside text-gfa-grey space-y-2 mb-6">
+                <li>You go to GFAVIP to authenticate</li>
+                <li>GFAVIP redirects you back to `Liquidity.spot`</li>
+                <li>Your username, tier, and Gems balance are synced into your account here</li>
+            </ul>
+            <a href="{{ url_for('auth.login_gfavip') }}" class="inline-block w-full text-center bg-gfa-light text-gfa-dark font-bold py-3 rounded hover:bg-white transition">
+                Continue With GFAVIP
+            </a>
+        </div>
+    </div>
+
+    <div class="bg-blue-900/20 border border-blue-500/30 rounded-lg p-6 text-blue-100">
+        <p>
+            <strong>Note:</strong> If you were expecting a local username/password login, this app does not use one. GFAVIP is the login provider.
+        </p>
+    </div>
+</div>
+{% endblock %}

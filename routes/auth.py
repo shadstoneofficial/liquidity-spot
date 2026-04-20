@@ -1,4 +1,4 @@
-from flask import Blueprint, redirect, request, session, url_for, current_app, flash
+from flask import Blueprint, redirect, request, session, url_for, current_app, flash, render_template
 from functools import wraps
 import requests
 from models import db, User
@@ -17,6 +17,14 @@ def login_required(f):
 
 @auth_bp.route('/login')
 def login():
+    if 'user_id' in session:
+        return redirect(url_for('main.dashboard'))
+
+    return render_template('login.html')
+
+
+@auth_bp.route('/login/gfavip')
+def login_gfavip():
     service_name = current_app.config.get('GFAVIP_SERVICE_NAME', 'liquidity-spot')
     redirect_uri = current_app.config.get('REDIRECT_URI', 'http://localhost:8000/callback')
     sso_url = f"https://wallet.gfavip.com/api/auth/sso/authorize?redirect_uri={redirect_uri}&service={service_name}"
