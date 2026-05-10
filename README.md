@@ -117,6 +117,12 @@ Initial integration should be conservative:
 - no seed/private-key access;
 - explicit user prompts for any future wallet-assisted action.
 
+The draft Bob Add On manifest is available at:
+
+```txt
+https://liquidity.spot/bob-addon.json
+```
+
 See the hub planning docs in `hub-learnhns/temp-specs` for the broader Bob Add Ons roadmap.
 
 ## Deployment

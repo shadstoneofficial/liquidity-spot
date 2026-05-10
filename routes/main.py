@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app, Response
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app, Response, jsonify
 from models import db, User, Order, Swap, P2POffer, P2PTrade, P2PTradeMessage, P2PTradeParticipantState
 import os
 from routes.auth import login_required
@@ -101,6 +101,31 @@ def skill_md():
             content = f.read()
         return Response(content, mimetype='text/plain')
     return Response("skill.md not found", status=404, mimetype='text/plain')
+
+@main_bp.route('/bob-addon.json')
+def bob_addon_manifest():
+    return jsonify({
+        'id': 'liquidity-spot',
+        'name': 'Liquidity Spot',
+        'publisher': 'LearnHNS',
+        'version': '0.1.0',
+        'description': 'P2P coordination for HNS/BTC-style liquidity trades.',
+        'type': 'external-web',
+        'entry': 'https://liquidity.spot/p2p',
+        'homepage': 'https://liquidity.spot',
+        'source': 'https://github.com/shadstoneofficial/liquidity-spot',
+        'permissions': [],
+        'capabilities': {
+            'guestMode': True,
+            'gfavipOptional': True,
+            'gemsOptional': True,
+            'walletCustody': False,
+            'automaticSigning': False,
+            'spvCompatible': True,
+        },
+        'networks': ['main'],
+        'status': 'public-preview',
+    })
 
 @main_bp.route('/tutorial')
 def tutorial():
