@@ -479,8 +479,11 @@ def activity():
     return render_template('activity.html', user=user, items=items)
 
 @main_bp.route('/orders', methods=['GET', 'POST'])
-@login_required
 def orders():
+    if request.method == 'POST' and not session.get('user_id'):
+        flash('Sign in with GFAVIP to post an atomic swap test order.', 'warning')
+        return redirect(url_for('auth.login'))
+
     if request.method == 'POST':
         side = request.form.get('side')
         amount_hns = request.form.get('amount_hns')
