@@ -17,7 +17,7 @@ def login_required(f):
 
 @auth_bp.route('/login')
 def login():
-    if 'user_id' in session:
+    if 'user_id' in session and session.get('auth_method') != 'guest':
         return redirect(url_for('main.dashboard'))
 
     return render_template('login.html')
@@ -75,6 +75,7 @@ def callback():
     session['username'] = username
     session['tier'] = tier
     session['token'] = token
+    session['auth_method'] = 'gfavip'
     
     flash('Logged in successfully!', 'success')
     return redirect(url_for('main.dashboard'))

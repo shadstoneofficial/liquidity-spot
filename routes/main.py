@@ -17,6 +17,47 @@ from services.gems_service import (
 main_bp = Blueprint('main', __name__)
 
 
+def _is_gfavip_session():
+    return bool(session.get('token')) or session.get('auth_method') == 'gfavip'
+
+
+def _ensure_session_user():
+    if session.get('user_id'):
+        user = User.query.get(session['user_id'])
+        if user:
+            return user
+
+    for _ in range(5):
+        user_id = f"guest-{secrets.token_hex(16)}"
+        username = f"Guest {secrets.token_hex(3)}"
+        if not User.query.get(user_id) and not User.query.filter_by(username=username).first():
+            user = User(id=user_id, username=username, tier='guest')
+            db.session.add(user)
+            db.session.commit()
+            session['user_id'] = user_id
+            session['username'] = username
+            session['tier'] = 'guest'
+            session['auth_method'] = 'guest'
+            flash('Continuing as a guest. GFAVIP is only needed for Gems and account-linked benefits.', 'info')
+            return user
+
+    raise RuntimeError('Could not create a guest session.')
+
+
+def _parse_gems_stake(raw_value):
+    try:
+        return int(raw_value or 0)
+    except (TypeError, ValueError):
+        return None
+
+
+def _gems_allowed_or_flash(gems_stake):
+    if gems_stake and gems_stake > 0 and not _is_gfavip_session():
+        flash('GFAVIP login is only required when you choose to use Gems. Remove the Gems bond or sign in with GFAVIP.', 'warning')
+        return False
+    return True
+
+
 def _build_gems_metadata(trade, operation_type, extra=None):
     metadata = {
         'service': 'liquidity-spot',
@@ -88,22 +129,29 @@ def p2p():
     return render_template('p2p.html', offers=offers, my_trades=my_trades, current_price=current_price)
 
 @main_bp.route('/p2p/offers', methods=['POST'])
-@login_required
 def create_p2p_offer():
+    user = _ensure_session_user()
     side = request.form.get('side')
     amount_hns = request.form.get('amount_hns')
     price = request.form.get('price')
-    gems_stake = request.form.get('gems_stake') or 0
+    gems_stake = _parse_gems_stake(request.form.get('gems_stake'))
     payment_method = request.form.get('payment_method') or 'Manual Wallet Transfer'
     notes = request.form.get('notes')
 
+    if gems_stake is None:
+        flash('Gems bond must be a whole number.', 'error')
+        return redirect(url_for('main.p2p'))
+
+    if not _gems_allowed_or_flash(gems_stake):
+        return redirect(url_for('main.p2p'))
+
     try:
         offer = P2POffer(
-            creator_id=session['user_id'],
+            creator_id=user.id,
             side=side,
             amount_hns=Decimal(amount_hns),
             price_btc_per_hns=Decimal(price),
-            gems_stake=int(gems_stake),
+            gems_stake=gems_stake,
             payment_method=payment_method,
             notes=notes
         )
@@ -116,11 +164,11 @@ def create_p2p_offer():
     return redirect(url_for('main.p2p'))
 
 @main_bp.route('/p2p/offers/<int:offer_id>/accept', methods=['POST'])
-@login_required
 def accept_p2p_offer(offer_id):
+    user = _ensure_session_user()
     offer = P2POffer.query.get_or_404(offer_id)
 
-    if offer.creator_id == session['user_id']:
+    if offer.creator_id == user.id:
         flash('You cannot accept your own P2P offer.', 'error')
         return redirect(url_for('main.p2p'))
 
@@ -159,11 +207,11 @@ def accept_p2p_offer(offer_id):
     trade = P2PTrade(
         offer_id=offer.id,
         creator_id=offer.creator_id,
-        counterparty_id=session['user_id'],
+        counterparty_id=user.id,
         status='matched',
         milestone='matched',
         latest_note='Trade matched. Use this room to coordinate next steps safely.',
-        last_actor_user_id=session['user_id'],
+        last_actor_user_id=user.id,
         maker_bond_amount=offer.gems_stake or 0,
         maker_bond_status=bond_status,
         maker_bond_locked_at=bond_locked_at,
@@ -176,7 +224,7 @@ def accept_p2p_offer(offer_id):
 
     db.session.add(P2PTradeParticipantState(
         trade_id=trade.id,
-        user_id=session['user_id'],
+        user_id=user.id,
         last_viewed_at=datetime.utcnow()
     ))
     db.session.commit()
@@ -480,23 +528,27 @@ def activity():
 
 @main_bp.route('/orders', methods=['GET', 'POST'])
 def orders():
-    if request.method == 'POST' and not session.get('user_id'):
-        flash('Sign in with GFAVIP to post an atomic swap test order.', 'warning')
-        return redirect(url_for('auth.login'))
-
     if request.method == 'POST':
+        user = _ensure_session_user()
         side = request.form.get('side')
         amount_hns = request.form.get('amount_hns')
         price = request.form.get('price')
-        gems_stake = request.form.get('gems_stake') or 0
+        gems_stake = _parse_gems_stake(request.form.get('gems_stake'))
+
+        if gems_stake is None:
+            flash('Gems stake must be a whole number.', 'error')
+            return redirect(url_for('main.orders'))
+
+        if not _gems_allowed_or_flash(gems_stake):
+            return redirect(url_for('main.orders'))
         
         try:
             order = Order(
-                user_id=session['user_id'],
+                user_id=user.id,
                 side=side,
                 amount_hns=Decimal(amount_hns),
                 price_btc_per_hns=Decimal(price),
-                gems_stake=int(gems_stake)
+                gems_stake=gems_stake
             )
             db.session.add(order)
             db.session.commit()
@@ -521,10 +573,10 @@ def orders():
     return render_template('orders.html', orders=orders, current_price=current_price)
 
 @main_bp.route('/orders/<int:order_id>/accept', methods=['POST'])
-@login_required
 def accept_order(order_id):
+    user = _ensure_session_user()
     order = Order.query.get_or_404(order_id)
-    matcher_id = session['user_id']
+    matcher_id = user.id
     
     if order.user_id == matcher_id:
         flash('You cannot accept your own order.', 'error')

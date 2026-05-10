@@ -23,8 +23,12 @@
 
     <div class="grid grid-cols-1 xl:grid-cols-5 gap-6">
         <div class="xl:col-span-2 bg-black/30 p-6 rounded-lg border border-gfa-grey/20">
-            {% if session.get('user_id') %}
             <h2 class="text-2xl font-bold text-white mb-4">Create P2P Offer</h2>
+            {% if not session.get('user_id') %}
+            <div class="mb-4 rounded-lg border border-blue-500/30 bg-blue-900/20 p-3 text-sm text-blue-100">
+                You can post as a guest. GFAVIP is only needed if you add a Gems bond or want account-linked benefits.
+            </div>
+            {% endif %}
             <form method="POST" action="{{ url_for('main.create_p2p_offer') }}" class="space-y-4" id="p2p-offer-form">
                 <div>
                     <label class="block text-gfa-grey mb-1">Side</label>
@@ -65,7 +69,7 @@
                 <div>
                     <label class="block text-gfa-grey mb-1">Gems Bond (Optional)</label>
                     <input type="number" name="gems_stake" id="p2p-gems-stake" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white" placeholder="25">
-                    <p class="text-xs text-gfa-grey mt-1">Maker-only bond. If you back out unfairly after match, some or all of it may be forfeited.</p>
+                    <p class="text-xs text-gfa-grey mt-1">Optional maker-only bond. GFAVIP login is required only if you choose to use Gems.</p>
                 </div>
                 <div>
                     <label class="block text-gfa-grey mb-1">Notes</label>
@@ -85,20 +89,6 @@
                     Post P2P Offer
                 </button>
             </form>
-            {% else %}
-            <h2 class="text-2xl font-bold text-white mb-3">Browse First</h2>
-            <p class="text-gfa-grey mb-4">
-                Public P2P offers are visible without an account. Sign in with GFAVIP only when you want to post an offer, accept an offer, use Gems, or save trade activity.
-            </p>
-            <a href="{{ url_for('auth.login') }}" class="inline-block bg-gfa-light text-gfa-dark px-4 py-2 rounded font-bold hover:bg-white transition">
-                Optional GFAVIP Login
-            </a>
-            <div class="mt-5 border-t border-gfa-grey/20 pt-5 text-sm text-gfa-grey space-y-2">
-                <p><strong class="text-white">No custody:</strong> Liquidity.spot does not hold funds.</p>
-                <p><strong class="text-white">Human P2P first:</strong> trade rooms and reputation require identity.</p>
-                <p><strong class="text-white">Testing mode:</strong> trustless tools are still experimental.</p>
-            </div>
-            {% endif %}
         </div>
 
         <div class="xl:col-span-3 bg-black/30 p-6 rounded-lg border border-gfa-grey/20">
@@ -149,12 +139,10 @@
                                         <form method="POST" action="{{ url_for('main.cancel_p2p_offer', offer_id=offer.id) }}">
                                             <button type="submit" class="text-red-400 hover:text-red-300 text-xs">Cancel</button>
                                         </form>
-                                    {% elif session.get('user_id') %}
+                                    {% else %}
                                         <form method="POST" action="{{ url_for('main.accept_p2p_offer', offer_id=offer.id) }}">
                                             <button type="submit" class="bg-gfa-blue text-white text-xs px-3 py-1 rounded hover:bg-blue-600">Open Trade Room</button>
                                         </form>
-                                    {% else %}
-                                        <a href="{{ url_for('auth.login') }}" class="inline-block bg-gfa-blue text-white text-xs px-3 py-1 rounded hover:bg-blue-600">Sign in to open</a>
                                     {% endif %}
                                 </td>
                             </tr>

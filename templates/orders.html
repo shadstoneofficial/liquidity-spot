@@ -20,8 +20,12 @@
 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
     <!-- Create Order Form -->
     <div class="bg-black/30 p-6 rounded-lg">
-        {% if session.get('user_id') %}
         <h2 class="text-2xl font-bold mb-4 text-gfa-light">Create Atomic Swap Order</h2>
+        {% if not session.get('user_id') %}
+        <div class="mb-4 rounded-lg border border-blue-500/30 bg-blue-900/20 p-3 text-sm text-blue-100">
+            You can post a testing order as a guest. GFAVIP is only needed if you choose to use Gems.
+        </div>
+        {% endif %}
         <form method="POST" action="{{ url_for('main.orders') }}" class="space-y-4">
             <div>
                 <label class="block text-gfa-grey mb-1">Side</label>
@@ -51,22 +55,10 @@
             <div>
                 <label class="block text-gfa-grey mb-1">Stake Gems (Optional)</label>
                 <input type="number" name="gems_stake" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white" placeholder="50">
+                <p class="text-xs text-gfa-grey mt-1">Optional. GFAVIP login is required only when using Gems.</p>
             </div>
             <button type="submit" class="w-full bg-gfa-light text-gfa-dark font-bold py-2 rounded hover:bg-white transition">Post Order</button>
         </form>
-        {% else %}
-        <h2 class="text-2xl font-bold mb-4 text-gfa-light">Browse Test Orders</h2>
-        <p class="text-gfa-grey mb-4">
-            Atomic Swaps are still an experimental testing mode. You can browse the order book without logging in. Sign in with GFAVIP only if you want to post or accept a test order.
-        </p>
-        <a href="{{ url_for('auth.login') }}" class="inline-block bg-gfa-light text-gfa-dark px-4 py-2 rounded font-bold hover:bg-white transition">
-            Optional GFAVIP Login
-        </a>
-        <div class="mt-5 border-t border-gfa-grey/20 pt-5 text-sm text-gfa-grey space-y-2">
-            <p><strong class="text-white">Recommended:</strong> use Human P2P for the main product flow.</p>
-            <p><strong class="text-white">Testing only:</strong> do not treat this as a finished production atomic swap engine yet.</p>
-        </div>
-        {% endif %}
     </div>
 
     <!-- Order Book -->
@@ -101,12 +93,10 @@
                                 <td class="p-2">
                                     {% if order.user_id == session.get('user_id') %}
                                         <span class="text-xs text-gfa-grey cursor-not-allowed opacity-50">Your Order</span>
-                                    {% elif session.get('user_id') %}
+                                    {% else %}
                                         <form method="POST" action="{{ url_for('main.accept_order', order_id=order.id) }}">
                                             <button type="submit" class="bg-gfa-blue text-white text-xs px-3 py-1 rounded hover:bg-blue-600">Accept</button>
                                         </form>
-                                    {% else %}
-                                        <a href="{{ url_for('auth.login') }}" class="inline-block bg-gfa-blue text-white text-xs px-3 py-1 rounded hover:bg-blue-600">Sign in to accept</a>
                                     {% endif %}
                                 </td>
                             </tr>

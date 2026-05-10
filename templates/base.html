@@ -94,6 +94,9 @@
                             <a href="{{ url_for('main.profile') }}" class="block rounded px-3 py-2 hover:bg-white/5 hover:text-gfa-light">View Profile</a>
                             <a href="{{ url_for('main.activity') }}" class="block rounded px-3 py-2 hover:bg-white/5 hover:text-gfa-light">Activity</a>
                             <a href="{{ url_for('main.dashboard') }}" class="block rounded px-3 py-2 hover:bg-white/5 hover:text-gfa-light">Dashboard</a>
+                            {% if session.get('auth_method') == 'guest' %}
+                                <a href="{{ url_for('auth.login') }}" class="block rounded px-3 py-2 text-gfa-light hover:bg-white/5 hover:text-white">Connect GFAVIP for Gems</a>
+                            {% endif %}
                             {% if session.get('tier') == 'team' %}
                                 <a href="{{ url_for('admin.credit') }}" class="block rounded px-3 py-2 hover:bg-white/5 hover:text-gfa-light">Admin</a>
                             {% endif %}
@@ -121,6 +124,9 @@
                     <a href="{{ url_for('main.dashboard') }}" class="hover:text-gfa-light">Dashboard</a>
                     <a href="{{ url_for('main.profile') }}" class="hover:text-gfa-light">Profile</a>
                     <a href="{{ url_for('main.activity') }}" class="hover:text-gfa-light">Activity</a>
+                    {% if session.get('auth_method') == 'guest' %}
+                        <a href="{{ url_for('auth.login') }}" class="hover:text-gfa-light">Connect GFAVIP for Gems</a>
+                    {% endif %}
                 {% endif %}
                 <a href="{{ url_for('main.p2p') }}" class="hover:text-gfa-light">P2P</a>
                 <a href="{{ url_for('main.orders') }}" class="hover:text-gfa-light">Atomic Swaps (Experimental)</a>
@@ -167,6 +173,9 @@
                     <a href="{{ url_for('main.dashboard') }}" class="hover:text-gfa-light">Dashboard</a>
                     <a href="{{ url_for('main.profile') }}" class="hover:text-gfa-light">Profile</a>
                     <a href="{{ url_for('main.activity') }}" class="hover:text-gfa-light">Activity</a>
+                    {% if session.get('auth_method') == 'guest' %}
+                        <a href="{{ url_for('auth.login') }}" class="hover:text-gfa-light">Connect GFAVIP for Gems</a>
+                    {% endif %}
                 {% endif %}
                 <a href="{{ url_for('main.p2p') }}" class="hover:text-gfa-light">P2P</a>
                 <a href="{{ url_for('main.orders') }}" class="hover:text-gfa-light">Atomic Swaps</a>
