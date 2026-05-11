@@ -1,4 +1,4 @@
-from flask import Flask, session
+from flask import Flask, request, session
 from config import config
 from models import db
 from datetime import datetime
@@ -23,6 +23,14 @@ def create_app(config_name='default'):
 
     from routes.admin import admin_bp
     app.register_blueprint(admin_bp)
+
+    @app.after_request
+    def add_wallet_adapter_cors_headers(response):
+        if request.path.startswith('/api/'):
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+            response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+        return response
 
     @app.context_processor
     def inject_nav_notifications():
