@@ -140,7 +140,10 @@
                                             <button type="submit" class="text-red-400 hover:text-red-300 text-xs">Cancel</button>
                                         </form>
                                     {% else %}
-                                        <form method="POST" action="{{ url_for('main.accept_p2p_offer', offer_id=offer.id) }}">
+                                        <form method="POST" action="{{ url_for('main.accept_p2p_offer', offer_id=offer.id) }}" onsubmit="return confirmP2PAccept(this)">
+                                            <input type="hidden" name="offer_side" value="{{ offer.side }}">
+                                            <input type="hidden" name="offer_amount" value="{{ offer.amount_hns }}">
+                                            <input type="hidden" name="offer_price" value="{{ '%.12f'|format(offer.price_btc_per_hns) }}">
                                             <button type="submit" class="bg-gfa-blue text-white text-xs px-3 py-1 rounded hover:bg-blue-600">Open Trade Room</button>
                                         </form>
                                     {% endif %}
@@ -260,6 +263,19 @@
         const price = parseFloat(document.getElementById('p2p-price').value) || 0;
         const total = amount * price;
         document.getElementById('p2p-total-btc').textContent = total.toFixed(12) + ' BTC';
+    }
+
+    function confirmP2PAccept(form) {
+        const side = (form.querySelector('[name="offer_side"]')?.value || '').toUpperCase();
+        const amount = form.querySelector('[name="offer_amount"]')?.value || 'the listed';
+        const price = form.querySelector('[name="offer_price"]')?.value || 'the listed price';
+
+        return window.confirm(
+            `Open a P2P trade room for this ${side} offer?\n\n` +
+            `Amount: ${amount} HNS\n` +
+            `Price: ${price} BTC/HNS\n\n` +
+            'This will match the offer and notify both sides in a shared room. Do not move BTC or HNS until you coordinate the next step there.'
+        );
     }
 
     function reuseLastP2PListing() {

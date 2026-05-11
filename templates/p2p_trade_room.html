@@ -52,6 +52,45 @@
         {% endif %}
     </div>
 
+    {% if trade.milestone == 'matched' and trade.status == 'matched' %}
+    <div class="bg-blue-900/20 p-6 rounded-lg border border-blue-500/30">
+        <h2 class="text-2xl font-bold text-white mb-4">Matched Trade Guide</h2>
+        {% if current_role == 'Alice' %}
+        <div class="space-y-4 text-gfa-grey">
+            <p><strong class="text-green-300">You are Alice, the HNS seller.</strong> A match means the room is open for coordination. It does not mean you should move HNS immediately.</p>
+            <ol class="list-decimal list-inside space-y-2">
+                <li>Ask Bob to confirm they are ready and how the BTC payment or lock will be handled.</li>
+                <li>Keep important confirmations and TXIDs in this room, even if you also coordinate elsewhere.</li>
+                <li>Only mark <strong class="text-white">Payment / Lock Sent</strong> after you actually send or lock HNS and can provide the TXID.</li>
+                <li>If Bob stops responding or the flow feels unclear, pause and open a dispute.</li>
+            </ol>
+            <div>
+                <p class="text-sm font-bold text-white mb-2">Suggested first message</p>
+                <div class="rounded border border-blue-500/30 bg-black/40 p-3 text-sm text-blue-100">
+                    Hi Bob, I see the trade is matched. Please confirm you are ready to proceed and share the next step for the BTC payment/lock. I will not move HNS until we both confirm the flow.
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="space-y-4 text-gfa-grey">
+            <p><strong class="text-blue-300">You are Bob, the HNS buyer / BTC seller.</strong> A match means you should coordinate clearly with Alice before either side advances the trade.</p>
+            <ol class="list-decimal list-inside space-y-2">
+                <li>Confirm you are ready and explain the BTC payment or lock step you expect.</li>
+                <li>Do not ask Alice to send HNS until both sides agree on the next step.</li>
+                <li>Share BTC-side TXIDs or confirmation details in the room when they exist.</li>
+                <li>Only mark confirmations after you have independently verified them.</li>
+            </ol>
+            <div>
+                <p class="text-sm font-bold text-white mb-2">Suggested first message</p>
+                <div class="rounded border border-blue-500/30 bg-black/40 p-3 text-sm text-blue-100">
+                    Hi Alice, I see the trade is matched. I am here and ready to coordinate the BTC payment/lock step. I will share confirmations and TXIDs in this room as we proceed.
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2 space-y-6">
             <div class="bg-black/30 p-6 rounded-lg border border-gfa-grey/20">
@@ -147,7 +186,7 @@
         <div class="space-y-6">
             <div class="bg-black/30 p-6 rounded-lg border border-gfa-grey/20">
                 <h2 class="text-2xl font-bold text-white mb-4">Update Trade</h2>
-                <form method="POST" action="{{ url_for('main.update_p2p_trade', trade_id=trade.id) }}" class="space-y-4">
+                <form method="POST" action="{{ url_for('main.update_p2p_trade', trade_id=trade.id) }}" class="space-y-4" onsubmit="return confirmTradeUpdate(this)">
                     <div>
                         <label class="block text-gfa-grey mb-1">Milestone</label>
                         <select name="milestone" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white">
@@ -185,37 +224,37 @@
             <div class="bg-black/30 p-6 rounded-lg border border-gfa-grey/20">
                 <h2 class="text-2xl font-bold text-white mb-4">Quick Actions</h2>
                 <div class="space-y-3">
-                    <form method="POST" action="{{ url_for('main.p2p_trade_action', trade_id=trade.id) }}" class="space-y-2">
+                    <form method="POST" action="{{ url_for('main.p2p_trade_action', trade_id=trade.id) }}" class="space-y-2" onsubmit="return confirmTradeAction(this)" data-confirm="Mark Payment / Lock Sent only after you actually sent or locked funds and can record the proof. Continue?">
                         <input type="hidden" name="action" value="mark_payment_sent">
                         <textarea name="note" rows="2" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white" placeholder="Optional note for 'payment sent'"></textarea>
                         <button type="submit" class="w-full bg-gfa-blue text-white font-bold py-2 rounded hover:bg-blue-600 transition">Mark Payment / Lock Sent</button>
                     </form>
-                    <form method="POST" action="{{ url_for('main.p2p_trade_action', trade_id=trade.id) }}" class="space-y-2">
+                    <form method="POST" action="{{ url_for('main.p2p_trade_action', trade_id=trade.id) }}" class="space-y-2" onsubmit="return confirmTradeAction(this)" data-confirm="Mark Payment / Lock Confirmed only after you independently verified the other party's action. Continue?">
                         <input type="hidden" name="action" value="mark_payment_received">
                         <textarea name="note" rows="2" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white" placeholder="Optional note for 'payment confirmed'"></textarea>
                         <button type="submit" class="w-full bg-gfa-light text-gfa-dark font-bold py-2 rounded hover:bg-white transition">Mark Payment / Lock Confirmed</button>
                     </form>
-                    <form method="POST" action="{{ url_for('main.p2p_trade_action', trade_id=trade.id) }}" class="space-y-2">
+                    <form method="POST" action="{{ url_for('main.p2p_trade_action', trade_id=trade.id) }}" class="space-y-2" onsubmit="return confirmTradeAction(this)" data-confirm="Mark Released / Claimed only after the release or claim step actually happened. Continue?">
                         <input type="hidden" name="action" value="mark_released">
                         <textarea name="note" rows="2" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white" placeholder="Optional note for 'released / claimed'"></textarea>
                         <button type="submit" class="w-full bg-purple-600 text-white font-bold py-2 rounded hover:bg-purple-500 transition">Mark Released / Claimed</button>
                     </form>
-                    <form method="POST" action="{{ url_for('main.p2p_trade_action', trade_id=trade.id) }}" class="space-y-2">
+                    <form method="POST" action="{{ url_for('main.p2p_trade_action', trade_id=trade.id) }}" class="space-y-2" onsubmit="return confirmTradeAction(this)" data-confirm="Complete this trade only after both sides are fully settled. Continue?">
                         <input type="hidden" name="action" value="mark_completed">
                         <textarea name="note" rows="2" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white" placeholder="Optional completion note"></textarea>
                         <button type="submit" class="w-full bg-green-600 text-white font-bold py-2 rounded hover:bg-green-500 transition">Mark Completed</button>
                     </form>
-                    <form method="POST" action="{{ url_for('main.p2p_trade_action', trade_id=trade.id) }}" class="space-y-2">
+                    <form method="POST" action="{{ url_for('main.p2p_trade_action', trade_id=trade.id) }}" class="space-y-2" onsubmit="return confirmTradeAction(this)" data-confirm="Open a dispute and send this trade to review? Continue?">
                         <input type="hidden" name="action" value="mark_disputed">
                         <textarea name="note" rows="2" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white" placeholder="Explain the dispute clearly"></textarea>
                         <button type="submit" class="w-full bg-red-700 text-white font-bold py-2 rounded hover:bg-red-600 transition">Open Dispute</button>
                     </form>
-                    <form method="POST" action="{{ url_for('main.p2p_trade_action', trade_id=trade.id) }}" class="space-y-2">
+                    <form method="POST" action="{{ url_for('main.p2p_trade_action', trade_id=trade.id) }}" class="space-y-2" onsubmit="return confirmTradeAction(this)" data-confirm="Mark the counterparty as no-show and send this trade to review? Continue?">
                         <input type="hidden" name="action" value="mark_no_show">
                         <textarea name="note" rows="2" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white" placeholder="Describe the no-show / non-response"></textarea>
                         <button type="submit" class="w-full bg-orange-600 text-white font-bold py-2 rounded hover:bg-orange-500 transition">Mark No-Show</button>
                     </form>
-                    <form method="POST" action="{{ url_for('main.p2p_trade_action', trade_id=trade.id) }}" class="space-y-2">
+                    <form method="POST" action="{{ url_for('main.p2p_trade_action', trade_id=trade.id) }}" class="space-y-2" onsubmit="return confirmTradeAction(this)" data-confirm="Cancel this trade? Use dispute instead if funds may already have moved. Continue?">
                         <input type="hidden" name="action" value="mark_canceled">
                         <textarea name="note" rows="2" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white" placeholder="Explain why the trade is being canceled"></textarea>
                         <button type="submit" class="w-full bg-gray-600 text-white font-bold py-2 rounded hover:bg-gray-500 transition">Cancel Trade</button>
@@ -245,4 +284,21 @@
         </div>
     </div>
 </div>
+<script>
+    function confirmTradeAction(form) {
+        return window.confirm(form.dataset.confirm || 'Record this trade action?');
+    }
+
+    function confirmTradeUpdate(form) {
+        const milestone = form.querySelector('[name="milestone"]')?.value || 'current milestone';
+        const status = form.querySelector('[name="status"]')?.value || 'current status';
+
+        return window.confirm(
+            `Save manual trade update?\n\n` +
+            `Milestone: ${milestone}\n` +
+            `Status: ${status}\n\n` +
+            'Only save if the room details match what both sides have actually verified.'
+        );
+    }
+</script>
 {% endblock %}

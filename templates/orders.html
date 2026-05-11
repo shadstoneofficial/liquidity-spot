@@ -6,14 +6,11 @@
 <div class="mb-6 bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-4">
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div>
-            <p class="font-bold text-yellow-200">Atomic Swap Testing Mode</p>
+            <p class="font-bold text-yellow-200">Atomic Swap Alpha Testing</p>
             <p class="text-sm text-yellow-100">
-                These order and swap tools remain available for testing and learning. Human P2P coordination is becoming the main product direction.
+                This flow is in alpha testing stage. Use small test amounts, coordinate carefully, and verify every lock, claim, refund, and TXID yourself.
             </p>
         </div>
-        <a href="{{ url_for('main.p2p') }}" class="inline-block bg-gfa-light text-gfa-dark px-4 py-2 rounded font-bold hover:bg-white transition text-center">
-            View P2P Direction
-        </a>
     </div>
 </div>
 
@@ -104,7 +101,10 @@
                                             {% endif %}
                                         </div>
                                     {% else %}
-                                        <form method="POST" action="{{ url_for('main.accept_order', order_id=order.id) }}">
+                                        <form method="POST" action="{{ url_for('main.accept_order', order_id=order.id) }}" onsubmit="return confirmAtomicAccept(this)">
+                                            <input type="hidden" name="order_side" value="{{ order.side }}">
+                                            <input type="hidden" name="order_amount" value="{{ order.amount_hns }}">
+                                            <input type="hidden" name="order_price" value="{{ '%.12f'|format(order.price_btc_per_hns) }}">
                                             <button type="submit" class="bg-gfa-blue text-white text-xs px-3 py-1 rounded hover:bg-blue-600">Accept</button>
                                         </form>
                                     {% endif %}
@@ -132,6 +132,19 @@
         const price = parseFloat(document.getElementById('priceInput').value) || 0;
         const total = amount * price;
         document.getElementById('totalValue').textContent = total.toFixed(12) + ' BTC';
+    }
+
+    function confirmAtomicAccept(form) {
+        const side = (form.querySelector('[name="order_side"]')?.value || '').toUpperCase();
+        const amount = form.querySelector('[name="order_amount"]')?.value || 'the listed';
+        const price = form.querySelector('[name="order_price"]')?.value || 'the listed price';
+
+        return window.confirm(
+            `Accept this atomic swap ${side} order?\n\n` +
+            `Amount: ${amount} HNS\n` +
+            `Price: ${price} BTC/HNS\n\n` +
+            'This will create an alpha-stage swap room. Do not lock BTC or HNS until the room shows the correct next step and you have verified the details.'
+        );
     }
 
     const amountInput = document.querySelector('input[name="amount_hns"]');
