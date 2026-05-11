@@ -105,6 +105,30 @@
                     <p class="font-mono">{{ swap.timelock_bob_sec // 600 }} blocks / {{ swap.timelock_bob_sec / 3600 }}h</p>
                 </div>
             </div>
+
+            {% if swap.hns_claim_public_key or swap.hns_refund_public_key or swap.hns_lock_address %}
+                <div class="rounded border border-gfa-grey/20 bg-black/20 p-4 text-sm space-y-3">
+                    <p class="font-bold text-white">HNS HTLC Wallet Data</p>
+                    <dl class="space-y-2">
+                        <div>
+                            <dt class="text-gfa-grey">Bob Claim Public Key</dt>
+                            <dd class="font-mono break-all">{{ swap.hns_claim_public_key or 'Waiting for Bob Wallet' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-gfa-grey">Alice Refund Public Key</dt>
+                            <dd class="font-mono break-all">{{ swap.hns_refund_public_key or 'Waiting for Alice Wallet' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-gfa-grey">HNS Refund Locktime</dt>
+                            <dd class="font-mono">{{ swap.hns_refund_locktime or 'Waiting for Alice Wallet' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-gfa-grey">HTLC Address</dt>
+                            <dd class="font-mono break-all">{{ swap.hns_lock_address or 'Not built yet' }}</dd>
+                        </div>
+                    </dl>
+                </div>
+            {% endif %}
         </div>
 
         <div class="bg-black/30 p-6 rounded-lg">

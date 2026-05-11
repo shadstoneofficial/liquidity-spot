@@ -103,6 +103,28 @@ def _clean_secret(raw_value):
     return secret.lower()
 
 
+def _clean_public_key(raw_value):
+    key = (raw_value or '').strip()
+    if len(key) not in (66, 130) or not _is_hex(key):
+        return None
+    return key.lower()
+
+
+def _clean_script(raw_value):
+    script = (raw_value or '').strip()
+    if not script or len(script) > 4096 or not _is_hex(script):
+        return None
+    return script.lower()
+
+
+def _clean_non_negative_int(raw_value):
+    try:
+        value = int(raw_value)
+    except (TypeError, ValueError):
+        return None
+    return value if value >= 0 else None
+
+
 def _hash_secret(secret):
     return hashlib.sha256(bytes.fromhex(secret)).hexdigest()
 
@@ -156,6 +178,15 @@ def _swap_public_payload(swap):
         'alice_claim_txid': swap.alice_claim_txid,
         'bob_claim_txid': swap.bob_claim_txid,
         'revealed_secret': swap.revealed_secret,
+        'hns_htlc': {
+            'claim_public_key': swap.hns_claim_public_key,
+            'refund_public_key': swap.hns_refund_public_key,
+            'refund_locktime': swap.hns_refund_locktime,
+            'lock_address': swap.hns_lock_address,
+            'lock_script': swap.hns_lock_script,
+            'lock_value': swap.hns_lock_value,
+            'lock_output_index': swap.hns_lock_output_index,
+        },
         'verified': {
             'alice_lock': bool(swap.alice_lock_verified_at),
             'bob_lock': bool(swap.bob_lock_verified_at),
@@ -927,6 +958,80 @@ def api_wallet_swap_intents(id):
     return jsonify(build_swap_intents(swap, _app_base_url()))
 
 
+@main_bp.route('/api/swaps/<int:id>/hns-htlc', methods=['POST'])
+def api_update_hns_htlc_metadata(id):
+    swap = Swap.query.get_or_404(id)
+    if not _adapter_token_valid(swap):
+        return jsonify({'error': 'Invalid or missing adapter token.'}), 403
+
+    payload = request.get_json(silent=True) or request.form
+    changed = []
+
+    public_key_fields = {
+        'hns_claim_public_key': 'hns_claim_public_key',
+        'claim_public_key': 'hns_claim_public_key',
+        'bob_hns_claim_public_key': 'hns_claim_public_key',
+        'hns_refund_public_key': 'hns_refund_public_key',
+        'refund_public_key': 'hns_refund_public_key',
+        'alice_hns_refund_public_key': 'hns_refund_public_key',
+    }
+    for payload_key, field_name in public_key_fields.items():
+        if payload.get(payload_key):
+            value = _clean_public_key(payload.get(payload_key))
+            if not value:
+                return jsonify({'error': f'{payload_key} must be a compressed or uncompressed public key hex.'}), 400
+            setattr(swap, field_name, value)
+            changed.append(field_name)
+
+    int_fields = {
+        'hns_refund_locktime': 'hns_refund_locktime',
+        'refund_locktime': 'hns_refund_locktime',
+        'hns_lock_value': 'hns_lock_value',
+        'htlc_value': 'hns_lock_value',
+        'hns_lock_output_index': 'hns_lock_output_index',
+        'lock_output_index': 'hns_lock_output_index',
+    }
+    for payload_key, field_name in int_fields.items():
+        if payload.get(payload_key) is not None:
+            value = _clean_non_negative_int(payload.get(payload_key))
+            if value is None:
+                return jsonify({'error': f'{payload_key} must be a non-negative integer.'}), 400
+            setattr(swap, field_name, value)
+            changed.append(field_name)
+
+    address = (payload.get('hns_lock_address') or payload.get('htlc_address') or '').strip()
+    if address:
+        if len(address) > 128:
+            return jsonify({'error': 'hns_lock_address is too long.'}), 400
+        swap.hns_lock_address = address
+        changed.append('hns_lock_address')
+
+    script = payload.get('hns_lock_script') or payload.get('htlc_script')
+    if script:
+        value = _clean_script(script)
+        if not value:
+            return jsonify({'error': 'hns_lock_script must be hex and at most 4096 characters.'}), 400
+        swap.hns_lock_script = value
+        changed.append('hns_lock_script')
+
+    if not changed:
+        return jsonify({'error': 'No HNS HTLC metadata fields were supplied.'}), 400
+
+    swap.latest_note = 'HNS HTLC wallet metadata updated.'
+
+    try:
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        current_app.logger.exception('Error recording HNS HTLC metadata')
+        return jsonify({'error': 'Could not record HNS HTLC metadata.'}), 500
+
+    return jsonify({
+        'changed': sorted(set(changed)),
+        'swap': _swap_public_payload(swap),
+    })
+
+
 @main_bp.route('/api/swaps/<int:id>/txids/<leg>', methods=['POST'])
 def api_submit_swap_txid(id, leg):
     swap = Swap.query.get_or_404(id)
@@ -964,6 +1069,31 @@ def api_submit_swap_txid(id, leg):
         if not secret or _hash_secret(secret) != swap.secret_hash:
             return jsonify({'error': 'revealed_secret does not match this swap hash.'}), 400
         swap.revealed_secret = secret
+
+    if leg == 'alice-lock':
+        hns_metadata = {
+            'hns_lock_output_index': payload.get('hns_lock_output_index') or payload.get('lock_output_index'),
+            'hns_lock_value': payload.get('hns_lock_value') or payload.get('htlc_value'),
+        }
+        for field_name, raw_value in hns_metadata.items():
+            if raw_value is not None:
+                value = _clean_non_negative_int(raw_value)
+                if value is None:
+                    return jsonify({'error': f'{field_name} must be a non-negative integer.'}), 400
+                setattr(swap, field_name, value)
+
+        address = (payload.get('hns_lock_address') or payload.get('htlc_address') or '').strip()
+        if address:
+            if len(address) > 128:
+                return jsonify({'error': 'hns_lock_address is too long.'}), 400
+            swap.hns_lock_address = address
+
+        script = payload.get('hns_lock_script') or payload.get('htlc_script')
+        if script:
+            value = _clean_script(script)
+            if not value:
+                return jsonify({'error': 'hns_lock_script must be hex and at most 4096 characters.'}), 400
+            swap.hns_lock_script = value
 
     setattr(swap, field_name, txid)
     if leg == 'bob-claim' and swap.status != 'completed':
