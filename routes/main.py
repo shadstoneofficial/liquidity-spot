@@ -5,6 +5,7 @@ from routes.auth import login_required
 import secrets
 import hashlib
 import requests
+import re
 from decimal import Decimal, InvalidOperation
 from datetime import datetime
 from sqlalchemy.exc import SQLAlchemyError
@@ -73,6 +74,65 @@ def _build_gems_metadata(trade, operation_type, extra=None):
     if extra:
         metadata.update(extra)
     return metadata
+
+
+def _is_hex(value, expected_length=None):
+    if not value:
+        return False
+    value = value.strip()
+    if expected_length and len(value) != expected_length:
+        return False
+    return bool(re.fullmatch(r'[0-9a-fA-F]+', value))
+
+
+def _clean_txid(raw_value):
+    txid = (raw_value or '').strip()
+    if not _is_hex(txid, 64):
+        return None
+    return txid.lower()
+
+
+def _clean_secret(raw_value):
+    secret = (raw_value or '').strip()
+    if not _is_hex(secret):
+        return None
+    if len(secret) not in (32, 64, 128):
+        return None
+    return secret.lower()
+
+
+def _hash_secret(secret):
+    return hashlib.sha256(bytes.fromhex(secret)).hexdigest()
+
+
+def _swap_participants(swap):
+    return {swap.order.user_id, swap.matcher_id}
+
+
+def _swap_alice_id(swap):
+    return swap.role_alice_user_id
+
+
+def _swap_bob_id(swap):
+    for participant_id in _swap_participants(swap):
+        if participant_id != swap.role_alice_user_id:
+            return participant_id
+    return None
+
+
+def _is_swap_alice(swap, user_id):
+    return user_id == _swap_alice_id(swap)
+
+
+def _is_swap_bob(swap, user_id):
+    return user_id == _swap_bob_id(swap)
+
+
+def _complete_swap_reputation(swap):
+    for user_id in _swap_participants(swap):
+        user = User.query.get(user_id)
+        if user:
+            user.completed_swaps = (user.completed_swaps or 0) + 1
 
 
 def _refund_maker_bond(trade, reason, resolution='refunded'):
@@ -462,7 +522,7 @@ def dashboard():
         (P2PTrade.creator_id == user.id) | (P2PTrade.counterparty_id == user.id)
     ).order_by(P2PTrade.updated_at.desc()).all()
 
-    active_swaps = [swap for swap in my_swaps if swap.status not in ['completed', 'canceled']]
+    active_swaps = [swap for swap in my_swaps if swap.status not in ['completed', 'canceled', 'refunded']]
     active_p2p_trades = [trade for trade in my_p2p_trades if trade.status not in ['completed', 'canceled']]
 
     return render_template(
@@ -674,7 +734,8 @@ def accept_order(order_id):
         matcher_id=matcher_id,
         secret_hash=secret_hash,
         role_alice_user_id=role_alice_id,
-        status=status
+        status=status,
+        latest_note='Swap matched. Waiting for Alice to generate the hash secret.' if status == 'pending_secret' else 'Swap initiated. Alice can now post the HNS lock transaction.'
     )
     
     order.status = 'matched'
@@ -707,10 +768,132 @@ def initiate_swap(id):
     
     swap.secret_hash = secret_hash
     swap.status = 'initiated'
+    swap.latest_note = 'Secret generated. Alice can now post the HNS lock transaction.'
     db.session.commit()
     
     session['generated_secret'] = secret
     flash('Secret generated! Swap is now live.', 'success')
+    return redirect(url_for('main.swap_details', id=swap.id))
+
+@main_bp.route('/swaps/<int:id>/progress', methods=['POST'])
+@login_required
+def progress_swap(id):
+    swap = Swap.query.get_or_404(id)
+    user_id = session['user_id']
+
+    if user_id not in _swap_participants(swap):
+        flash('You do not have permission to update this swap.', 'error')
+        return redirect(url_for('main.dashboard'))
+
+    action = request.form.get('action')
+    note = (request.form.get('note') or '').strip()
+
+    try:
+        if action == 'post_alice_lock':
+            if not _is_swap_alice(swap, user_id):
+                flash('Only Alice can post the HNS lock transaction.', 'error')
+                return redirect(url_for('main.swap_details', id=swap.id))
+            if swap.status not in ['initiated', 'alice_locked']:
+                flash('Alice can only post the HNS lock before Bob locks BTC.', 'error')
+                return redirect(url_for('main.swap_details', id=swap.id))
+
+            txid = _clean_txid(request.form.get('alice_lock_txid'))
+            if not txid:
+                flash('Enter a valid 64-character HNS lock TXID.', 'error')
+                return redirect(url_for('main.swap_details', id=swap.id))
+
+            swap.alice_lock_txid = txid
+            swap.status = 'alice_locked'
+            swap.latest_note = note or 'Alice posted the HNS lock transaction. Bob should verify it before locking BTC.'
+
+        elif action == 'post_bob_lock':
+            if not _is_swap_bob(swap, user_id):
+                flash('Only Bob can post the BTC lock transaction.', 'error')
+                return redirect(url_for('main.swap_details', id=swap.id))
+            if swap.status not in ['alice_locked', 'bob_locked']:
+                flash('Bob should only lock BTC after Alice posts the HNS lock TXID.', 'error')
+                return redirect(url_for('main.swap_details', id=swap.id))
+
+            txid = _clean_txid(request.form.get('bob_lock_txid'))
+            if not txid:
+                flash('Enter a valid 64-character BTC lock TXID.', 'error')
+                return redirect(url_for('main.swap_details', id=swap.id))
+
+            swap.bob_lock_txid = txid
+            swap.status = 'bob_locked'
+            swap.latest_note = note or 'Bob posted the BTC lock transaction. Alice can claim BTC and reveal the secret.'
+
+        elif action == 'post_alice_claim':
+            if not _is_swap_alice(swap, user_id):
+                flash('Only Alice can post the BTC claim transaction.', 'error')
+                return redirect(url_for('main.swap_details', id=swap.id))
+            if swap.status not in ['bob_locked', 'alice_claimed']:
+                flash('Alice can claim BTC only after Bob posts the BTC lock TXID.', 'error')
+                return redirect(url_for('main.swap_details', id=swap.id))
+
+            txid = _clean_txid(request.form.get('alice_claim_txid'))
+            secret = _clean_secret(request.form.get('revealed_secret'))
+            if not txid:
+                flash('Enter a valid 64-character BTC claim TXID.', 'error')
+                return redirect(url_for('main.swap_details', id=swap.id))
+            if not secret or _hash_secret(secret) != swap.secret_hash:
+                flash('The revealed secret does not match this swap hash.', 'error')
+                return redirect(url_for('main.swap_details', id=swap.id))
+
+            swap.alice_claim_txid = txid
+            swap.revealed_secret = secret
+            swap.status = 'alice_claimed'
+            swap.latest_note = note or 'Alice claimed BTC and revealed the secret. Bob can now claim HNS.'
+
+        elif action == 'post_bob_claim':
+            if not _is_swap_bob(swap, user_id):
+                flash('Only Bob can post the HNS claim transaction.', 'error')
+                return redirect(url_for('main.swap_details', id=swap.id))
+            if swap.status not in ['alice_claimed', 'completed']:
+                flash('Bob can claim HNS only after Alice reveals the secret on the BTC claim.', 'error')
+                return redirect(url_for('main.swap_details', id=swap.id))
+
+            txid = _clean_txid(request.form.get('bob_claim_txid'))
+            if not txid:
+                flash('Enter a valid 64-character HNS claim TXID.', 'error')
+                return redirect(url_for('main.swap_details', id=swap.id))
+
+            swap.bob_claim_txid = txid
+            if swap.status != 'completed':
+                _complete_swap_reputation(swap)
+            swap.status = 'completed'
+            swap.completed_at = datetime.utcnow()
+            swap.latest_note = note or 'Bob claimed HNS. Swap completed.'
+
+        elif action == 'post_refund':
+            if user_id == _swap_alice_id(swap):
+                txid = _clean_txid(request.form.get('alice_refund_txid'))
+                if not txid:
+                    flash('Enter a valid 64-character HNS refund TXID.', 'error')
+                    return redirect(url_for('main.swap_details', id=swap.id))
+                swap.alice_refund_txid = txid
+                swap.latest_note = note or 'Alice posted an HNS refund transaction.'
+            else:
+                txid = _clean_txid(request.form.get('bob_refund_txid'))
+                if not txid:
+                    flash('Enter a valid 64-character BTC refund TXID.', 'error')
+                    return redirect(url_for('main.swap_details', id=swap.id))
+                swap.bob_refund_txid = txid
+                swap.latest_note = note or 'Bob posted a BTC refund transaction.'
+            swap.status = 'refunded'
+            swap.completed_at = datetime.utcnow()
+
+        else:
+            flash('Unknown swap action.', 'error')
+            return redirect(url_for('main.swap_details', id=swap.id))
+
+        db.session.commit()
+        flash('Swap progress updated.', 'success')
+    except SQLAlchemyError:
+        db.session.rollback()
+        current_app.logger.exception('Error updating atomic swap progress')
+        flash('Could not update swap progress. Please try again.', 'error')
+
     return redirect(url_for('main.swap_details', id=swap.id))
 
 @main_bp.route('/orders/<int:order_id>/cancel', methods=['POST'])
@@ -744,6 +927,9 @@ def swap_details(id):
         return redirect(url_for('main.dashboard'))
         
     secret = session.get('generated_secret') if swap.role_alice_user_id == user.id else None
+    is_alice = _is_swap_alice(swap, user.id)
+    bob_user = User.query.get(_swap_bob_id(swap))
+    alice_user = User.query.get(_swap_alice_id(swap))
     
     # Get coingecko price (mock for now or real request)
     try:
@@ -753,4 +939,13 @@ def swap_details(id):
     except:
         price = 0.00000000
         
-    return render_template('swap.html', swap=swap, user=user, secret=secret, coingecko_price=price)
+    return render_template(
+        'swap.html',
+        swap=swap,
+        user=user,
+        secret=secret,
+        coingecko_price=price,
+        is_alice=is_alice,
+        alice_user=alice_user,
+        bob_user=bob_user,
+    )

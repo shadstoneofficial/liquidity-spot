@@ -39,6 +39,35 @@ def ensure_p2p_schema():
                     text(f"ALTER TABLE p2p_trades ADD COLUMN {column_name} {column_type}")
                 )
 
+def ensure_atomic_swap_schema():
+    """Lightweight schema patching for the manual HTLC lifecycle."""
+    inspector = inspect(db.engine)
+
+    if 'swaps' not in inspector.get_table_names():
+        return
+
+    existing_columns = {col['name'] for col in inspector.get_columns('swaps')}
+    required_columns = {
+        'alice_lock_txid': "VARCHAR(128)",
+        'bob_lock_txid': "VARCHAR(128)",
+        'alice_claim_txid': "VARCHAR(128)",
+        'bob_claim_txid': "VARCHAR(128)",
+        'alice_refund_txid': "VARCHAR(128)",
+        'bob_refund_txid': "VARCHAR(128)",
+        'revealed_secret': "VARCHAR(128)",
+        'latest_note': "TEXT",
+        'updated_at': "TIMESTAMP",
+        'completed_at': "TIMESTAMP",
+    }
+
+    with db.engine.begin() as connection:
+        for column_name, column_type in required_columns.items():
+            if column_name not in existing_columns:
+                print(f"Adding missing column swaps.{column_name}...", flush=True)
+                connection.execute(
+                    text(f"ALTER TABLE swaps ADD COLUMN {column_name} {column_type}")
+                )
+
 def ensure_numeric_precision():
     """Increase numeric precision for BTC pricing on PostgreSQL deployments."""
     if db.engine.dialect.name != 'postgresql':
@@ -65,6 +94,7 @@ try:
         print("Creating/Verifying database tables...", flush=True)
         db.create_all()
         ensure_p2p_schema()
+        ensure_atomic_swap_schema()
         ensure_numeric_precision()
         print("Database tables created!", flush=True)
 except Exception as e:

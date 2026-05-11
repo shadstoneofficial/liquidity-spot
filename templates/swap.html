@@ -3,181 +3,250 @@
 {% block title %}Swap Details | Liquidity.spot{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto bg-black/30 p-8 rounded-lg">
-    <div class="mb-6 bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-4">
-        <p class="font-bold text-yellow-200">Experimental Trustless Flow</p>
-        <p class="text-sm text-yellow-100">
-            This screen is part of the HTLC testing path. It is kept for experimentation and learning while Human P2P coordination becomes the primary product direction.
-        </p>
-    </div>
-    <div class="flex justify-between items-center mb-6">
-        <h1 class="text-3xl font-bold text-gfa-light">Swap #{{ swap.id }}</h1>
-        <span class="bg-blue-500/20 text-blue-300 px-3 py-1 rounded uppercase text-sm font-bold">{{ swap.status }}</span>
-    </div>
+{% set total_btc = swap.order.amount_hns * swap.order.price_btc_per_hns %}
+{% set steps = [
+    ('initiated', 'Secret Ready'),
+    ('alice_locked', 'Alice HNS Lock'),
+    ('bob_locked', 'Bob BTC Lock'),
+    ('alice_claimed', 'Alice BTC Claim'),
+    ('completed', 'Bob HNS Claim')
+] %}
+{% set step_index = {
+    'pending_secret': 0,
+    'initiated': 1,
+    'alice_locked': 2,
+    'bob_locked': 3,
+    'alice_claimed': 4,
+    'completed': 5,
+    'refunded': 5,
+    'canceled': 5
+}.get(swap.status, 0) %}
 
-    <!-- Swap Parameters -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-        <div>
-            <h3 class="text-xl font-bold mb-4 text-white">Trade Details</h3>
-            <div class="space-y-2 text-gfa-grey">
-                <p><strong>Pair:</strong> HNS / BTC</p>
-                <p><strong>Amount:</strong> {{ swap.order.amount_hns }} HNS</p>
-                <p><strong>Price:</strong> {{ swap.order.price_btc_per_hns }} BTC</p>
-                <p><strong>Total BTC:</strong> {{ swap.order.amount_hns * swap.order.price_btc_per_hns }} BTC</p>
-                <p><strong>Coingecko Price:</strong> {{ coingecko_price }} BTC</p>
+<div class="max-w-5xl mx-auto space-y-6">
+    <div class="bg-black/30 p-6 rounded-lg">
+        <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+            <div>
+                <p class="text-sm uppercase tracking-wide text-gfa-grey">Atomic Swap</p>
+                <h1 class="text-3xl font-bold text-gfa-light">Swap #{{ swap.id }}</h1>
+                <p class="mt-2 text-gfa-grey">
+                    {{ swap.order.amount_hns }} HNS at {{ swap.order.price_btc_per_hns }} BTC/HNS
+                    for {{ total_btc }} BTC.
+                </p>
             </div>
-        </div>
-        
-        <div>
-            <h3 class="text-xl font-bold mb-4 text-white flex items-center gap-2">
-                Your Role
-                <div class="group relative inline-block">
-                    <svg class="w-5 h-5 text-gfa-grey cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    <div class="invisible group-hover:visible absolute z-50 w-64 p-4 bg-black border border-gfa-grey/50 rounded-lg shadow-xl text-sm text-gfa-grey -left-20 top-8">
-                        <p class="font-bold text-white mb-2">The Story of Alice & Bob</p>
-                        <p class="mb-2"><strong>Alice</strong> (HNS Seller) locks HNS first. This gives <strong>Bob</strong> (HNS Buyer) confidence to lock his BTC.</p>
-                        <p>When Alice claims the BTC, she reveals the secret key, allowing Bob to claim the HNS.</p>
-                    </div>
-                </div>
-            </h3>
-            <div class="bg-black/50 p-4 rounded border border-gfa-grey/20">
-                {% if user.id == swap.role_alice_user_id %}
-                    <p class="text-lg font-bold text-green-400 mb-2">You are Alice (HNS Seller)</p>
-                    <p class="text-sm text-gfa-grey">You must lock HNS first.</p>
-                {% else %}
-                    <p class="text-lg font-bold text-blue-400 mb-2">You are Bob (HNS Buyer / BTC Seller)</p>
-                    <p class="text-sm text-gfa-grey">You wait for Alice to lock HNS, then you lock BTC.</p>
-                {% endif %}
+            <div class="text-left md:text-right">
+                <span class="inline-block bg-blue-500/20 text-blue-300 px-3 py-1 rounded uppercase text-sm font-bold">{{ swap.status }}</span>
+                <p class="mt-2 text-sm text-gfa-grey">
+                    Alice: {{ alice_user.username if alice_user else 'Unknown' }}<br>
+                    Bob: {{ bob_user.username if bob_user else 'Unknown' }}
+                </p>
             </div>
         </div>
     </div>
 
-    <!-- Technical Params -->
-    {% if swap.status == 'pending_secret' %}
-        <div class="bg-black/50 p-6 rounded-lg mb-8 border border-yellow-500/30">
-            <h3 class="text-xl font-bold mb-4 text-yellow-400">Action Required</h3>
-            
-            {% if user.id == swap.role_alice_user_id %}
-                <p class="text-white mb-4">
-                    You are <strong>Alice</strong>. You must generate the secret to initiate the swap safely.
-                </p>
-                <form method="POST" action="{{ url_for('main.initiate_swap', id=swap.id) }}">
-                    <button type="submit" class="bg-gfa-blue text-white font-bold py-3 px-6 rounded hover:bg-blue-600 transition w-full md:w-auto">
-                        Generate Secret & Initiate Swap
-                    </button>
-                </form>
-            {% else %}
-                <p class="text-white">
-                    Waiting for <strong>Alice</strong> (the other party) to generate the secret and initiate the swap.
-                </p>
-                <p class="text-gfa-grey text-sm mt-2">
-                    Please refresh this page periodically.
-                </p>
-            {% endif %}
-        </div>
-    {% else %}
-        <div class="bg-black/50 p-6 rounded-lg mb-8 border border-gfa-grey/20">
-            <h3 class="text-xl font-bold mb-4 text-white">Technical Parameters</h3>
-            
-            <div class="mb-4">
-                <p class="text-sm text-gfa-grey mb-1">Secret Hash (SHA256)</p>
-                <code class="block bg-black/80 p-3 rounded text-green-400 font-mono break-all">{{ swap.secret_hash }}</code>
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+        {% for key, label in steps %}
+            {% set current = loop.index %}
+            <div class="rounded border p-3 {{ 'border-gfa-light bg-gfa-light/10 text-white' if current <= step_index else 'border-gfa-grey/20 bg-black/20 text-gfa-grey' }}">
+                <p class="text-xs uppercase">Step {{ current }}</p>
+                <p class="font-bold">{{ label }}</p>
             </div>
+        {% endfor %}
+    </div>
 
-            {% if secret %}
-            <div class="mb-4">
-                <p class="text-sm text-gfa-grey mb-1">Secret (Keep Safe!)</p>
-                <div class="flex items-center gap-2">
-                    <code class="block bg-red-900/30 p-3 rounded text-red-300 font-mono break-all flex-grow">{{ secret }}</code>
-                    <span class="text-xs text-red-400">Only visible to you</span>
-                </div>
-            </div>
-            {% endif %}
-
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <p class="text-sm text-gfa-grey">Alice Timelock</p>
-                    <p class="font-mono">~{{ swap.timelock_alice_sec // 600 }} blocks ({{ swap.timelock_alice_sec / 3600 }}h)</p>
-                </div>
-                <div>
-                    <p class="text-sm text-gfa-grey">Bob Timelock</p>
-                    <p class="font-mono">~{{ swap.timelock_bob_sec // 600 }} blocks ({{ swap.timelock_bob_sec / 3600 }}h)</p>
-                </div>
-            </div>
+    {% if swap.latest_note %}
+        <div class="bg-green-900/20 border border-green-500/30 rounded-lg p-4 text-green-100">
+            {{ swap.latest_note }}
         </div>
     {% endif %}
 
-    <!-- Instructions -->
-    <div class="space-y-6">
-        <h3 class="text-2xl font-bold text-white">Step-by-Step Instructions</h3>
-        
-        {% if swap.status == 'pending_secret' %}
-             <div class="bg-black/30 p-4 rounded text-gfa-grey italic">
-                 Instructions will appear once the swap is initiated by Alice.
-             </div>
-        {% elif user.id == swap.role_alice_user_id %}
-            <!-- Alice Instructions -->
-            <ol class="list-decimal list-inside space-y-4 text-gfa-grey">
-                <li class="pl-2">
-                    <span class="text-white font-bold">Lock HNS:</span> 
-                    Open Bob Wallet. Create an HTLC transaction sending <strong>{{ swap.order.amount_hns }} HNS</strong>.
-                    <br>
-                    Use Hash: <code class="text-xs bg-black/50 px-1">{{ swap.secret_hash }}</code>
-                    <br>
-                    Timelock: <strong>{{ swap.timelock_alice_sec // 600 }} blocks</strong>.
-                </li>
-                <li class="pl-2">
-                    <span class="text-white font-bold">Share TXID:</span> 
-                    Send the Transaction ID to your counterparty via chat.
-                </li>
-                <li class="pl-2">
-                    <span class="text-white font-bold">Wait for Bob:</span> 
-                    Wait for Bob to lock BTC. Verify his transaction on a Bitcoin explorer.
-                </li>
-                <li class="pl-2">
-                    <span class="text-white font-bold">Claim BTC:</span> 
-                    Once Bob locks BTC, use your <strong>Secret</strong> to claim the BTC.
-                    <br>
-                    Revealing the secret allows Bob to claim your HNS.
-                </li>
-            </ol>
-        {% else %}
-            <!-- Bob Instructions -->
-            <ol class="list-decimal list-inside space-y-4 text-gfa-grey">
-                <li class="pl-2">
-                    <span class="text-white font-bold">Wait for Alice:</span> 
-                    Do not send any funds yet! Wait for Alice to provide an HNS Lock Transaction ID.
-                </li>
-                <li class="pl-2">
-                    <span class="text-white font-bold">Verify HNS Lock:</span> 
-                    Check Alice's transaction on an HNS explorer. Ensure the Hash matches and value is correct.
-                </li>
-                <li class="pl-2">
-                    <span class="text-white font-bold">Lock BTC:</span> 
-                    If HNS lock is valid, open your Bitcoin wallet (Electrum/Core).
-                    <br>
-                    Create HTLC sending <strong>{{ swap.order.amount_hns * swap.order.price_btc_per_hns }} BTC</strong>.
-                    <br>
-                    Use Hash: <code class="text-xs bg-black/50 px-1">{{ swap.secret_hash }}</code>
-                    <br>
-                    Timelock: <strong>{{ swap.timelock_bob_sec // 600 }} blocks</strong> (shorter than Alice's).
-                </li>
-                <li class="pl-2">
-                    <span class="text-white font-bold">Wait for Secret:</span> 
-                    Wait for Alice to claim your BTC. Her claim transaction will reveal the <strong>Secret</strong> on the blockchain.
-                </li>
-                <li class="pl-2">
-                    <span class="text-white font-bold">Claim HNS:</span> 
-                    Take the revealed Secret and use it to claim the HNS locked by Alice.
-                </li>
-            </ol>
-        {% endif %}
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-black/30 p-6 rounded-lg space-y-5">
+            <div>
+                <h2 class="text-xl font-bold text-white mb-3">Your Role</h2>
+                {% if is_alice %}
+                    <p class="text-green-300 font-bold">You are Alice, the HNS seller.</p>
+                    <p class="text-gfa-grey text-sm mt-1">You lock HNS first, then claim BTC with the secret.</p>
+                {% else %}
+                    <p class="text-blue-300 font-bold">You are Bob, the HNS buyer.</p>
+                    <p class="text-gfa-grey text-sm mt-1">You verify Alice's HNS lock, lock BTC, then claim HNS after the secret is revealed.</p>
+                {% endif %}
+            </div>
+
+            <div>
+                <h2 class="text-xl font-bold text-white mb-3">Technical Parameters</h2>
+                {% if swap.secret_hash %}
+                    <p class="text-sm text-gfa-grey mb-1">Secret Hash</p>
+                    <code class="block bg-black/80 p-3 rounded text-green-400 font-mono break-all">{{ swap.secret_hash }}</code>
+                {% else %}
+                    <p class="text-yellow-200">Waiting for Alice to generate the secret hash.</p>
+                {% endif %}
+            </div>
+
+            {% if secret %}
+                <div>
+                    <p class="text-sm text-gfa-grey mb-1">Your Secret</p>
+                    <code class="block bg-red-900/30 p-3 rounded text-red-300 font-mono break-all">{{ secret }}</code>
+                    <p class="text-xs text-red-300 mt-2">Keep this private until you claim Bob's BTC.</p>
+                </div>
+            {% elif swap.revealed_secret %}
+                <div>
+                    <p class="text-sm text-gfa-grey mb-1">Revealed Secret</p>
+                    <code class="block bg-black/80 p-3 rounded text-yellow-300 font-mono break-all">{{ swap.revealed_secret }}</code>
+                </div>
+            {% endif %}
+
+            <div class="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                    <p class="text-gfa-grey">Alice Refund Window</p>
+                    <p class="font-mono">{{ swap.timelock_alice_sec // 600 }} blocks / {{ swap.timelock_alice_sec / 3600 }}h</p>
+                </div>
+                <div>
+                    <p class="text-gfa-grey">Bob Refund Window</p>
+                    <p class="font-mono">{{ swap.timelock_bob_sec // 600 }} blocks / {{ swap.timelock_bob_sec / 3600 }}h</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-black/30 p-6 rounded-lg">
+            <h2 class="text-xl font-bold text-white mb-3">Recorded Transactions</h2>
+            <dl class="space-y-3 text-sm">
+                <div>
+                    <dt class="text-gfa-grey">Alice HNS Lock TXID</dt>
+                    <dd class="font-mono break-all">{{ swap.alice_lock_txid or 'Not submitted' }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gfa-grey">Bob BTC Lock TXID</dt>
+                    <dd class="font-mono break-all">{{ swap.bob_lock_txid or 'Not submitted' }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gfa-grey">Alice BTC Claim TXID</dt>
+                    <dd class="font-mono break-all">{{ swap.alice_claim_txid or 'Not submitted' }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gfa-grey">Bob HNS Claim TXID</dt>
+                    <dd class="font-mono break-all">{{ swap.bob_claim_txid or 'Not submitted' }}</dd>
+                </div>
+                {% if swap.alice_refund_txid or swap.bob_refund_txid %}
+                    <div>
+                        <dt class="text-gfa-grey">Refund TXIDs</dt>
+                        <dd class="font-mono break-all">
+                            Alice: {{ swap.alice_refund_txid or 'None' }}<br>
+                            Bob: {{ swap.bob_refund_txid or 'None' }}
+                        </dd>
+                    </div>
+                {% endif %}
+            </dl>
+        </div>
     </div>
-    
-    <div class="mt-8 p-4 bg-red-900/20 border border-red-500/30 rounded text-sm text-red-200">
-        <strong>Disclaimer:</strong> This trustless swap screen remains experimental. Use testnet coins or very small learning amounts only. Verify all parameters in your wallet before broadcasting, and do not treat this flow as fully hardened for broad mainnet use.
+
+    {% if swap.status == 'pending_secret' %}
+        <div class="bg-black/30 p-6 rounded-lg border border-yellow-500/30">
+            <h2 class="text-xl font-bold text-yellow-200 mb-3">Action Required</h2>
+            {% if is_alice %}
+                <p class="text-gfa-grey mb-4">Generate the hash secret before any funds are locked.</p>
+                <form method="POST" action="{{ url_for('main.initiate_swap', id=swap.id) }}">
+                    <button type="submit" class="bg-gfa-light text-gfa-dark font-bold py-3 px-5 rounded hover:bg-white transition">
+                        Generate Secret Hash
+                    </button>
+                </form>
+            {% else %}
+                <p class="text-gfa-grey">Waiting for Alice to generate the secret hash.</p>
+            {% endif %}
+        </div>
+    {% elif swap.status in ['completed', 'refunded', 'canceled'] %}
+        <div class="bg-black/30 p-6 rounded-lg">
+            <h2 class="text-xl font-bold text-white mb-2">Final State</h2>
+            <p class="text-gfa-grey">This swap is marked {{ swap.status }}.</p>
+        </div>
+    {% else %}
+        <div class="bg-black/30 p-6 rounded-lg">
+            <h2 class="text-xl font-bold text-white mb-4">Next Action</h2>
+
+            {% if is_alice and swap.status in ['initiated', 'alice_locked'] %}
+                <form method="POST" action="{{ url_for('main.progress_swap', id=swap.id) }}" class="space-y-4">
+                    <input type="hidden" name="action" value="post_alice_lock">
+                    <div>
+                        <label class="block text-gfa-grey mb-1">HNS Lock TXID</label>
+                        <input type="text" name="alice_lock_txid" value="{{ swap.alice_lock_txid or '' }}" required class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white font-mono" placeholder="64-character transaction ID">
+                    </div>
+                    <div>
+                        <label class="block text-gfa-grey mb-1">Note</label>
+                        <textarea name="note" rows="2" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white" placeholder="Explorer link or confirmation note"></textarea>
+                    </div>
+                    <button type="submit" class="bg-gfa-light text-gfa-dark font-bold py-2 px-5 rounded hover:bg-white transition">Record HNS Lock</button>
+                </form>
+            {% elif (not is_alice) and swap.status == 'alice_locked' %}
+                <form method="POST" action="{{ url_for('main.progress_swap', id=swap.id) }}" class="space-y-4">
+                    <input type="hidden" name="action" value="post_bob_lock">
+                    <div>
+                        <label class="block text-gfa-grey mb-1">BTC Lock TXID</label>
+                        <input type="text" name="bob_lock_txid" value="{{ swap.bob_lock_txid or '' }}" required class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white font-mono" placeholder="64-character transaction ID">
+                    </div>
+                    <div>
+                        <label class="block text-gfa-grey mb-1">Note</label>
+                        <textarea name="note" rows="2" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white" placeholder="Explorer link or confirmation note"></textarea>
+                    </div>
+                    <button type="submit" class="bg-gfa-light text-gfa-dark font-bold py-2 px-5 rounded hover:bg-white transition">Record BTC Lock</button>
+                </form>
+            {% elif is_alice and swap.status == 'bob_locked' %}
+                <form method="POST" action="{{ url_for('main.progress_swap', id=swap.id) }}" class="space-y-4">
+                    <input type="hidden" name="action" value="post_alice_claim">
+                    <div>
+                        <label class="block text-gfa-grey mb-1">BTC Claim TXID</label>
+                        <input type="text" name="alice_claim_txid" required class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white font-mono" placeholder="64-character transaction ID">
+                    </div>
+                    <div>
+                        <label class="block text-gfa-grey mb-1">Revealed Secret</label>
+                        <input type="text" name="revealed_secret" value="{{ secret or '' }}" required class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white font-mono" placeholder="Secret used to claim BTC">
+                    </div>
+                    <div>
+                        <label class="block text-gfa-grey mb-1">Note</label>
+                        <textarea name="note" rows="2" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white" placeholder="Explorer link or confirmation note"></textarea>
+                    </div>
+                    <button type="submit" class="bg-gfa-light text-gfa-dark font-bold py-2 px-5 rounded hover:bg-white transition">Record BTC Claim</button>
+                </form>
+            {% elif (not is_alice) and swap.status == 'alice_claimed' %}
+                <form method="POST" action="{{ url_for('main.progress_swap', id=swap.id) }}" class="space-y-4">
+                    <input type="hidden" name="action" value="post_bob_claim">
+                    <div>
+                        <label class="block text-gfa-grey mb-1">HNS Claim TXID</label>
+                        <input type="text" name="bob_claim_txid" required class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white font-mono" placeholder="64-character transaction ID">
+                    </div>
+                    <div>
+                        <label class="block text-gfa-grey mb-1">Note</label>
+                        <textarea name="note" rows="2" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white" placeholder="Explorer link or confirmation note"></textarea>
+                    </div>
+                    <button type="submit" class="bg-gfa-light text-gfa-dark font-bold py-2 px-5 rounded hover:bg-white transition">Complete Swap</button>
+                </form>
+            {% else %}
+                <p class="text-gfa-grey">Waiting for the counterparty to complete their current step.</p>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    {% if swap.status not in ['completed', 'refunded', 'canceled'] %}
+        <div class="bg-black/30 p-6 rounded-lg border border-red-500/30">
+            <h2 class="text-xl font-bold text-red-200 mb-3">Refund Path</h2>
+            <p class="text-sm text-red-100 mb-4">
+                Use this only after the applicable chain timelock has expired and your wallet has broadcast a valid refund transaction.
+            </p>
+            <form method="POST" action="{{ url_for('main.progress_swap', id=swap.id) }}" class="space-y-4">
+                <input type="hidden" name="action" value="post_refund">
+                {% if is_alice %}
+                    <label class="block text-gfa-grey mb-1">HNS Refund TXID</label>
+                    <input type="text" name="alice_refund_txid" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white font-mono" placeholder="64-character transaction ID">
+                {% else %}
+                    <label class="block text-gfa-grey mb-1">BTC Refund TXID</label>
+                    <input type="text" name="bob_refund_txid" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white font-mono" placeholder="64-character transaction ID">
+                {% endif %}
+                <textarea name="note" rows="2" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white" placeholder="Refund reason or explorer link"></textarea>
+                <button type="submit" class="bg-red-700 text-white font-bold py-2 px-5 rounded hover:bg-red-600 transition">Record Refund</button>
+            </form>
+        </div>
+    {% endif %}
+
+    <div class="bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-4 text-sm text-yellow-100">
+        This workflow records and validates the swap sequence inside Liquidity.spot. Before broadcasting any transaction, each participant must independently verify the HTLC script, amount, hash, timelock, confirmations, and refund path in their wallet or explorer.
     </div>
 </div>
 {% endblock %}

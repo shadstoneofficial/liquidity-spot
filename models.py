@@ -35,9 +35,19 @@ class Swap(db.Model):
     role_alice_user_id = db.Column(db.String(36))             # who locks first (HNS if poster sells, etc.)
     timelock_alice_sec = db.Column(db.Integer, default=172800)  # 48h
     timelock_bob_sec = db.Column(db.Integer, default=86400)     # 24h
-    status = db.Column(db.String(20), default='initiated')    # pending_secret / initiated / canceled / completed
+    status = db.Column(db.String(30), default='initiated')    # pending_secret / initiated / alice_locked / bob_locked / alice_claimed / completed / canceled / refunded
     gems_escrow = db.Column(db.Integer, default=0)            # staked amount held in limbo
+    alice_lock_txid = db.Column(db.String(128))
+    bob_lock_txid = db.Column(db.String(128))
+    alice_claim_txid = db.Column(db.String(128))
+    bob_claim_txid = db.Column(db.String(128))
+    alice_refund_txid = db.Column(db.String(128))
+    bob_refund_txid = db.Column(db.String(128))
+    revealed_secret = db.Column(db.String(128))
+    latest_note = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    completed_at = db.Column(db.DateTime)
     order = db.relationship('Order', backref='swap')
     matcher = db.relationship('User', foreign_keys=[matcher_id])
 
