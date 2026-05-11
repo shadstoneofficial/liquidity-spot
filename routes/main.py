@@ -569,11 +569,20 @@ def activity():
 @main_bp.route('/orders', methods=['GET', 'POST'])
 def orders():
     if request.method == 'POST':
-        user = _ensure_session_user()
+        try:
+            user = _ensure_session_user()
+        except RuntimeError:
+            flash('Could not start a guest session. Please try again.', 'error')
+            return redirect(url_for('main.orders'))
+
         side = request.form.get('side')
         amount_hns = request.form.get('amount_hns')
         price = request.form.get('price')
         gems_stake = _parse_gems_stake(request.form.get('gems_stake'))
+
+        if side not in ('buy', 'sell'):
+            flash('Order side must be buy or sell.', 'error')
+            return redirect(url_for('main.orders'))
 
         if gems_stake is None:
             flash('Gems stake must be a whole number.', 'error')
@@ -595,7 +604,12 @@ def orders():
             flash('Order created successfully!', 'success')
             return redirect(url_for('main.orders'))
         except (InvalidOperation, ValueError) as e:
+            db.session.rollback()
             flash(f'Error creating order: {str(e)}', 'error')
+        except SQLAlchemyError:
+            db.session.rollback()
+            current_app.logger.exception('Error creating atomic swap order')
+            flash('Error creating order. Please check the details and try again.', 'error')
 
     orders = Order.query.filter_by(status='open').order_by(Order.created_at.desc()).all()
     
@@ -614,7 +628,12 @@ def orders():
 
 @main_bp.route('/orders/<int:order_id>/accept', methods=['POST'])
 def accept_order(order_id):
-    user = _ensure_session_user()
+    try:
+        user = _ensure_session_user()
+    except RuntimeError:
+        flash('Could not start a guest session. Please try again.', 'error')
+        return redirect(url_for('main.orders'))
+
     order = Order.query.get_or_404(order_id)
     matcher_id = user.id
     
@@ -724,7 +743,7 @@ def swap_details(id):
         flash('You do not have permission to view this swap.', 'error')
         return redirect(url_for('main.dashboard'))
         
-    secret = session.get('generated_secret') if swap.matcher_id == user.id else None
+    secret = session.get('generated_secret') if swap.role_alice_user_id == user.id else None
     
     # Get coingecko price (mock for now or real request)
     try:
