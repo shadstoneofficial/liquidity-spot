@@ -160,11 +160,11 @@ def _complete_swap_reputation(swap):
 
 
 def _external_scheme():
+    if request.host.split(':', 1)[0] == 'liquidity.spot':
+        return 'https'
     forwarded_proto = request.headers.get('X-Forwarded-Proto', '').split(',')[0].strip()
     if forwarded_proto in ['http', 'https']:
         return forwarded_proto
-    if request.host.split(':', 1)[0] == 'liquidity.spot':
-        return 'https'
     return request.scheme
 
 
