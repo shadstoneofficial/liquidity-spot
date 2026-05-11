@@ -783,7 +783,10 @@ def orders():
             )
             db.session.add(order)
             db.session.commit()
-            flash('Order created successfully!', 'success')
+            if side == 'sell':
+                flash('Order listed. Do not lock HNS yet; the HNS lock step starts after someone accepts and a swap room is created.', 'success')
+            else:
+                flash('Order listed. Do not lock BTC yet; the BTC lock step starts after an HNS seller accepts and posts the HNS lock.', 'success')
             return redirect(url_for('main.orders'))
         except (InvalidOperation, ValueError) as e:
             db.session.rollback()

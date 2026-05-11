@@ -26,6 +26,9 @@
             You can post a testing order as a guest. GFAVIP is only needed if you choose to use Gems.
         </div>
         {% endif %}
+        <div class="mb-4 rounded-lg border border-gfa-light/30 bg-gfa-light/10 p-3 text-sm text-gfa-light">
+            Posting an order does not lock funds. The HNS/BTC lock prompts appear after a counterparty accepts and a swap room is created.
+        </div>
         <form method="POST" action="{{ url_for('main.orders') }}" class="space-y-4">
             <div>
                 <label class="block text-gfa-grey mb-1">Side</label>
@@ -92,7 +95,14 @@
                                 <td class="p-2">{{ order.gems_stake }} 💎</td>
                                 <td class="p-2">
                                     {% if order.user_id == session.get('user_id') %}
-                                        <span class="text-xs text-gfa-grey cursor-not-allowed opacity-50">Your Order</span>
+                                        <div class="text-xs text-gfa-grey max-w-[220px]">
+                                            <p class="font-bold text-white">Your Order</p>
+                                            {% if order.side == 'sell' %}
+                                                <p>Waiting for a buyer. Do not lock HNS yet.</p>
+                                            {% else %}
+                                                <p>Waiting for a seller. Do not lock BTC yet.</p>
+                                            {% endif %}
+                                        </div>
                                     {% else %}
                                         <form method="POST" action="{{ url_for('main.accept_order', order_id=order.id) }}">
                                             <button type="submit" class="bg-gfa-blue text-white text-xs px-3 py-1 rounded hover:bg-blue-600">Accept</button>
