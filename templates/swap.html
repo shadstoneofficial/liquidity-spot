@@ -184,9 +184,14 @@
                 </p>
             </div>
             {% if swap.secret_hash %}
-                <a href="{{ url_for('main.api_swap_intents', id=swap.id) }}" class="inline-block bg-gfa-blue text-white font-bold py-2 px-4 rounded hover:bg-blue-600 transition text-center">
-                    Open Intent JSON
-                </a>
+                <div class="flex flex-col sm:flex-row gap-2">
+                    <a href="{{ bob_deeplink_url }}" class="inline-block bg-gfa-light text-gfa-dark font-bold py-2 px-4 rounded hover:bg-white transition text-center">
+                        Open In Bob Wallet
+                    </a>
+                    <a href="{{ wallet_intents_url }}" class="inline-block bg-gfa-blue text-white font-bold py-2 px-4 rounded hover:bg-blue-600 transition text-center">
+                        Open Intent JSON
+                    </a>
+                </div>
             {% endif %}
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5 text-sm">

@@ -919,6 +919,14 @@ def api_swap_intents(id):
     return jsonify(build_swap_intents(swap, _app_base_url()))
 
 
+@main_bp.route('/api/swaps/<int:id>/wallet-intents', methods=['GET'])
+def api_wallet_swap_intents(id):
+    swap = Swap.query.get_or_404(id)
+    if not _adapter_token_valid(swap):
+        return jsonify({'error': 'Invalid or missing adapter token.'}), 403
+    return jsonify(build_swap_intents(swap, _app_base_url()))
+
+
 @main_bp.route('/api/swaps/<int:id>/txids/<leg>', methods=['POST'])
 def api_submit_swap_txid(id, leg):
     swap = Swap.query.get_or_404(id)
@@ -1186,6 +1194,15 @@ def swap_details(id):
     is_alice = _is_swap_alice(swap, user.id)
     bob_user = User.query.get(_swap_bob_id(swap))
     alice_user = User.query.get(_swap_alice_id(swap))
+    adapter_token = _ensure_adapter_token(swap)
+    db.session.commit()
+    wallet_intents_url = url_for(
+        'main.api_wallet_swap_intents',
+        id=swap.id,
+        token=adapter_token,
+        _external=True
+    )
+    bob_deeplink_url = 'bob://liquidityswap?intent=' + wallet_intents_url
     
     # Get coingecko price (mock for now or real request)
     try:
@@ -1206,4 +1223,6 @@ def swap_details(id):
         bob_user=bob_user,
         hns_watcher_configured=bool(current_app.config.get('HNS_WATCHER_BASE_URL')),
         btc_watcher_configured=bool(current_app.config.get('BTC_WATCHER_BASE_URL')),
+        wallet_intents_url=wallet_intents_url,
+        bob_deeplink_url=bob_deeplink_url,
     )
