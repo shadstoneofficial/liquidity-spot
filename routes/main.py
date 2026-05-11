@@ -7,6 +7,7 @@ import hashlib
 import requests
 from decimal import Decimal, InvalidOperation
 from datetime import datetime
+from sqlalchemy.exc import SQLAlchemyError
 from services.gems_service import (
     GemsServiceError,
     credit_gems as wallet_credit_gems,
@@ -28,12 +29,16 @@ def _ensure_session_user():
             return user
 
     for _ in range(5):
-        user_id = f"guest-{secrets.token_hex(16)}"
+        user_id = f"guest-{secrets.token_hex(15)}"
         username = f"Guest {secrets.token_hex(3)}"
         if not User.query.get(user_id) and not User.query.filter_by(username=username).first():
             user = User(id=user_id, username=username, tier='guest')
             db.session.add(user)
-            db.session.commit()
+            try:
+                db.session.commit()
+            except SQLAlchemyError:
+                db.session.rollback()
+                continue
             session['user_id'] = user_id
             session['username'] = username
             session['tier'] = 'guest'
@@ -155,7 +160,12 @@ def p2p():
 
 @main_bp.route('/p2p/offers', methods=['POST'])
 def create_p2p_offer():
-    user = _ensure_session_user()
+    try:
+        user = _ensure_session_user()
+    except RuntimeError:
+        flash('Could not start a guest session. Please try again.', 'error')
+        return redirect(url_for('main.p2p'))
+
     side = request.form.get('side')
     amount_hns = request.form.get('amount_hns')
     price = request.form.get('price')
@@ -184,7 +194,12 @@ def create_p2p_offer():
         db.session.commit()
         flash('P2P offer created successfully.', 'success')
     except (InvalidOperation, ValueError) as exc:
+        db.session.rollback()
         flash(f'Error creating P2P offer: {exc}', 'error')
+    except SQLAlchemyError:
+        db.session.rollback()
+        current_app.logger.exception('Error creating P2P offer')
+        flash('Error creating P2P offer. Please check the details and try again.', 'error')
 
     return redirect(url_for('main.p2p'))
 
