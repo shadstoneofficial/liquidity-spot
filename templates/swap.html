@@ -113,18 +113,54 @@
                 <div>
                     <dt class="text-gfa-grey">Alice HNS Lock TXID</dt>
                     <dd class="font-mono break-all">{{ swap.alice_lock_txid or 'Not submitted' }}</dd>
+                    <dd class="mt-1">
+                        {% if swap.alice_lock_verified_at %}
+                            <span class="text-green-300">Verified {{ swap.alice_lock_verified_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                        {% elif swap.alice_lock_txid %}
+                            <form method="POST" action="{{ url_for('main.verify_swap_leg', id=swap.id, leg='alice-lock') }}">
+                                <button class="text-gfa-blue hover:text-blue-300" type="submit">Check HNS chain</button>
+                            </form>
+                        {% endif %}
+                    </dd>
                 </div>
                 <div>
                     <dt class="text-gfa-grey">Bob BTC Lock TXID</dt>
                     <dd class="font-mono break-all">{{ swap.bob_lock_txid or 'Not submitted' }}</dd>
+                    <dd class="mt-1">
+                        {% if swap.bob_lock_verified_at %}
+                            <span class="text-green-300">Verified {{ swap.bob_lock_verified_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                        {% elif swap.bob_lock_txid %}
+                            <form method="POST" action="{{ url_for('main.verify_swap_leg', id=swap.id, leg='bob-lock') }}">
+                                <button class="text-gfa-blue hover:text-blue-300" type="submit">Check BTC chain</button>
+                            </form>
+                        {% endif %}
+                    </dd>
                 </div>
                 <div>
                     <dt class="text-gfa-grey">Alice BTC Claim TXID</dt>
                     <dd class="font-mono break-all">{{ swap.alice_claim_txid or 'Not submitted' }}</dd>
+                    <dd class="mt-1">
+                        {% if swap.alice_claim_verified_at %}
+                            <span class="text-green-300">Verified {{ swap.alice_claim_verified_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                        {% elif swap.alice_claim_txid %}
+                            <form method="POST" action="{{ url_for('main.verify_swap_leg', id=swap.id, leg='alice-claim') }}">
+                                <button class="text-gfa-blue hover:text-blue-300" type="submit">Extract secret from BTC claim</button>
+                            </form>
+                        {% endif %}
+                    </dd>
                 </div>
                 <div>
                     <dt class="text-gfa-grey">Bob HNS Claim TXID</dt>
                     <dd class="font-mono break-all">{{ swap.bob_claim_txid or 'Not submitted' }}</dd>
+                    <dd class="mt-1">
+                        {% if swap.bob_claim_verified_at %}
+                            <span class="text-green-300">Verified {{ swap.bob_claim_verified_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                        {% elif swap.bob_claim_txid %}
+                            <form method="POST" action="{{ url_for('main.verify_swap_leg', id=swap.id, leg='bob-claim') }}">
+                                <button class="text-gfa-blue hover:text-blue-300" type="submit">Check HNS chain</button>
+                            </form>
+                        {% endif %}
+                    </dd>
                 </div>
                 {% if swap.alice_refund_txid or swap.bob_refund_txid %}
                     <div>
@@ -136,6 +172,38 @@
                     </div>
                 {% endif %}
             </dl>
+        </div>
+    </div>
+
+    <div class="bg-black/30 p-6 rounded-lg">
+        <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+            <div>
+                <h2 class="text-xl font-bold text-white mb-2">Wallet Adapters</h2>
+                <p class="text-gfa-grey text-sm">
+                    Bob Wallet and Bitcoin PSBT helpers can read this swap intent, build local-wallet transactions, and submit broadcast TXIDs back to Liquidity.spot.
+                </p>
+            </div>
+            {% if swap.secret_hash %}
+                <a href="{{ url_for('main.api_swap_intents', id=swap.id) }}" class="inline-block bg-gfa-blue text-white font-bold py-2 px-4 rounded hover:bg-blue-600 transition text-center">
+                    Open Intent JSON
+                </a>
+            {% endif %}
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5 text-sm">
+            <div class="rounded border border-gfa-grey/20 bg-black/20 p-4">
+                <p class="font-bold text-white">Bob Wallet HNS Adapter</p>
+                <p class="text-gfa-grey mt-1">Builds Alice's HNS lock and Bob's HNS claim from the shared hash/secret parameters.</p>
+                <p class="mt-2 {{ 'text-green-300' if hns_watcher_configured else 'text-yellow-200' }}">
+                    HNS watcher: {{ 'configured' if hns_watcher_configured else 'not configured' }}
+                </p>
+            </div>
+            <div class="rounded border border-gfa-grey/20 bg-black/20 p-4">
+                <p class="font-bold text-white">Bitcoin PSBT Adapter</p>
+                <p class="text-gfa-grey mt-1">Builds Bob's BTC lock and Alice's BTC claim PSBTs using local wallet keys and UTXOs.</p>
+                <p class="mt-2 {{ 'text-green-300' if btc_watcher_configured else 'text-yellow-200' }}">
+                    BTC watcher: {{ 'configured' if btc_watcher_configured else 'not configured' }}
+                </p>
+            </div>
         </div>
     </div>
 

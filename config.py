@@ -15,6 +15,9 @@ class Config:
     REDIRECT_URI = os.environ.get('REDIRECT_URI', 'http://localhost:8000/callback')
     GFAVIP_WALLET_API_KEY = os.environ.get('GFAVIP_WALLET_API_KEY')
     GFAVIP_WALLET_BASE_URL = os.environ.get('GFAVIP_WALLET_BASE_URL', 'https://wallet.gfavip.com')
+    BTC_WATCHER_BASE_URL = os.environ.get('BTC_WATCHER_BASE_URL', 'https://blockstream.info/api')
+    HNS_WATCHER_BASE_URL = os.environ.get('HNS_WATCHER_BASE_URL')
+    ATOMIC_SWAP_NETWORK = os.environ.get('ATOMIC_SWAP_NETWORK', 'main')
 
 class DevelopmentConfig(Config):
     DEBUG = True

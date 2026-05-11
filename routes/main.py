@@ -15,6 +15,8 @@ from services.gems_service import (
     deduct_gems as wallet_deduct_gems,
     is_wallet_service_configured,
 )
+from services.chain_watchers import WatcherError, verify_bitcoin_tx, verify_hns_tx
+from services.swap_adapters import build_swap_intents
 
 main_bp = Blueprint('main', __name__)
 
@@ -135,6 +137,114 @@ def _complete_swap_reputation(swap):
             user.completed_swaps = (user.completed_swaps or 0) + 1
 
 
+def _app_base_url():
+    return request.url_root.rstrip('/')
+
+
+def _swap_public_payload(swap):
+    return {
+        'id': swap.id,
+        'status': swap.status,
+        'order_id': swap.order_id,
+        'secret_hash': swap.secret_hash,
+        'alice_user_id': _swap_alice_id(swap),
+        'bob_user_id': _swap_bob_id(swap),
+        'amount_hns': str(swap.order.amount_hns),
+        'price_btc_per_hns': str(swap.order.price_btc_per_hns),
+        'alice_lock_txid': swap.alice_lock_txid,
+        'bob_lock_txid': swap.bob_lock_txid,
+        'alice_claim_txid': swap.alice_claim_txid,
+        'bob_claim_txid': swap.bob_claim_txid,
+        'revealed_secret': swap.revealed_secret,
+        'verified': {
+            'alice_lock': bool(swap.alice_lock_verified_at),
+            'bob_lock': bool(swap.bob_lock_verified_at),
+            'alice_claim': bool(swap.alice_claim_verified_at),
+            'bob_claim': bool(swap.bob_claim_verified_at),
+        },
+        'adapter_error': swap.adapter_error,
+        'wallet_intents_url': url_for('main.api_swap_intents', id=swap.id, _external=True) if request else None,
+        'updated_at': swap.updated_at.isoformat() if swap.updated_at else None,
+        'completed_at': swap.completed_at.isoformat() if swap.completed_at else None,
+    }
+
+
+def _ensure_adapter_token(swap):
+    if not swap.adapter_token:
+        swap.adapter_token = secrets.token_hex(32)
+    return swap.adapter_token
+
+
+def _adapter_token_valid(swap):
+    supplied = request.args.get('token') or request.headers.get('X-Liquidity-Adapter-Token')
+    return bool(swap.adapter_token and supplied and secrets.compare_digest(supplied, swap.adapter_token))
+
+
+def _watch_swap_tx(swap, leg):
+    if leg == 'alice_lock':
+        if not swap.alice_lock_txid:
+            return False, 'Alice HNS lock TXID has not been submitted yet.'
+        result = verify_hns_tx(
+            swap.alice_lock_txid,
+            current_app.config.get('HNS_WATCHER_BASE_URL')
+        )
+        if not result.get('found'):
+            return False, 'Alice HNS lock transaction was not found.'
+        swap.alice_lock_verified_at = result['verified_at']
+        return True, 'Alice HNS lock transaction found.'
+
+    if leg == 'bob_lock':
+        if not swap.bob_lock_txid:
+            return False, 'Bob BTC lock TXID has not been submitted yet.'
+        result = verify_bitcoin_tx(
+            swap.bob_lock_txid,
+            current_app.config.get('BTC_WATCHER_BASE_URL')
+        )
+        if not result.get('found'):
+            return False, 'Bob BTC lock transaction was not found.'
+        swap.bob_lock_verified_at = result['verified_at']
+        return True, 'Bob BTC lock transaction found.'
+
+    if leg == 'alice_claim':
+        if not swap.alice_claim_txid:
+            return False, 'Alice BTC claim TXID has not been submitted yet.'
+        result = verify_bitcoin_tx(
+            swap.alice_claim_txid,
+            current_app.config.get('BTC_WATCHER_BASE_URL'),
+            secret_hash=swap.secret_hash,
+            require_secret=True
+        )
+        if not result.get('found'):
+            return False, 'Alice BTC claim transaction was not found.'
+        if result.get('secret'):
+            swap.revealed_secret = result['secret']
+            swap.alice_claim_verified_at = result['verified_at']
+            return True, 'Alice BTC claim transaction found and secret verified.'
+        return False, result.get('error') or 'Alice BTC claim transaction did not reveal the expected secret.'
+
+    if leg == 'bob_claim':
+        if not swap.bob_claim_txid:
+            return False, 'Bob HNS claim TXID has not been submitted yet.'
+        result = verify_hns_tx(
+            swap.bob_claim_txid,
+            current_app.config.get('HNS_WATCHER_BASE_URL')
+        )
+        if not result.get('found'):
+            return False, 'Bob HNS claim transaction was not found.'
+        swap.bob_claim_verified_at = result['verified_at']
+        return True, 'Bob HNS claim transaction found.'
+
+    return False, 'Unknown swap leg.'
+
+
+def _watch_available(leg):
+    if leg in ('alice_lock', 'bob_claim'):
+        return bool(current_app.config.get('HNS_WATCHER_BASE_URL'))
+    if leg in ('bob_lock', 'alice_claim'):
+        return bool(current_app.config.get('BTC_WATCHER_BASE_URL'))
+    return False
+
+
 def _refund_maker_bond(trade, reason, resolution='refunded'):
     if trade.maker_bond_status != 'locked' or trade.maker_bond_amount <= 0:
         return False, 'No locked maker bond to refund.'
@@ -186,7 +296,19 @@ def bob_addon_manifest():
             'gemsOptional': True,
             'walletCustody': False,
             'automaticSigning': False,
+            'walletIntents': True,
+            'bobHnsIntent': True,
+            'bitcoinPsbtIntent': True,
+            'chainWatcherCallbacks': True,
             'spvCompatible': True,
+        },
+        'adapterEndpoints': {
+            'swapStatus': 'https://liquidity.spot/api/swaps/{swap_id}',
+            'walletIntents': 'https://liquidity.spot/api/swaps/{swap_id}/intents',
+            'submitAliceLock': 'https://liquidity.spot/api/swaps/{swap_id}/txids/alice-lock',
+            'submitBobLock': 'https://liquidity.spot/api/swaps/{swap_id}/txids/bob-lock',
+            'submitAliceClaim': 'https://liquidity.spot/api/swaps/{swap_id}/txids/alice-claim',
+            'submitBobClaim': 'https://liquidity.spot/api/swaps/{swap_id}/txids/bob-claim',
         },
         'networks': ['main'],
         'status': 'public-preview',
@@ -735,6 +857,7 @@ def accept_order(order_id):
         secret_hash=secret_hash,
         role_alice_user_id=role_alice_id,
         status=status,
+        adapter_token=secrets.token_hex(32),
         latest_note='Swap matched. Waiting for Alice to generate the hash secret.' if status == 'pending_secret' else 'Swap initiated. Alice can now post the HNS lock transaction.'
     )
     
@@ -774,6 +897,136 @@ def initiate_swap(id):
     session['generated_secret'] = secret
     flash('Secret generated! Swap is now live.', 'success')
     return redirect(url_for('main.swap_details', id=swap.id))
+
+
+@main_bp.route('/api/swaps/<int:id>', methods=['GET'])
+def api_swap_status(id):
+    swap = Swap.query.get_or_404(id)
+    return jsonify(_swap_public_payload(swap))
+
+
+@main_bp.route('/api/swaps/<int:id>/intents', methods=['GET'])
+@login_required
+def api_swap_intents(id):
+    swap = Swap.query.get_or_404(id)
+    if session['user_id'] not in _swap_participants(swap):
+        return jsonify({'error': 'You do not have permission to view wallet intents for this swap.'}), 403
+    _ensure_adapter_token(swap)
+    db.session.commit()
+    return jsonify(build_swap_intents(swap, _app_base_url()))
+
+
+@main_bp.route('/api/swaps/<int:id>/txids/<leg>', methods=['POST'])
+def api_submit_swap_txid(id, leg):
+    swap = Swap.query.get_or_404(id)
+    if not _adapter_token_valid(swap):
+        return jsonify({'error': 'Invalid or missing adapter token.'}), 403
+
+    payload = request.get_json(silent=True) or request.form
+    txid = _clean_txid(payload.get('txid'))
+    note = (payload.get('note') or '').strip()
+
+    leg_map = {
+        'alice-lock': ('alice_lock_txid', 'alice_locked', 'Alice HNS lock transaction submitted by wallet adapter.'),
+        'bob-lock': ('bob_lock_txid', 'bob_locked', 'Bob BTC lock transaction submitted by wallet adapter.'),
+        'alice-claim': ('alice_claim_txid', 'alice_claimed', 'Alice BTC claim transaction submitted by wallet adapter.'),
+        'bob-claim': ('bob_claim_txid', 'completed', 'Bob HNS claim transaction submitted by wallet adapter.'),
+    }
+    if leg not in leg_map:
+        return jsonify({'error': 'Unknown swap leg.'}), 404
+    if not txid:
+        return jsonify({'error': 'A valid 64-character txid is required.'}), 400
+
+    field_name, next_status, default_note = leg_map[leg]
+
+    if leg == 'alice-lock' and swap.status not in ['initiated', 'alice_locked']:
+        return jsonify({'error': 'Alice lock cannot be submitted before the swap is initiated.'}), 409
+    if leg == 'bob-lock' and swap.status not in ['alice_locked', 'bob_locked']:
+        return jsonify({'error': 'Bob lock cannot be submitted before Alice lock.'}), 409
+    if leg == 'alice-claim' and swap.status not in ['bob_locked', 'alice_claimed']:
+        return jsonify({'error': 'Alice claim cannot be submitted before Bob lock.'}), 409
+    if leg == 'bob-claim' and swap.status not in ['alice_claimed', 'completed']:
+        return jsonify({'error': 'Bob claim cannot be submitted before Alice claim.'}), 409
+
+    if leg == 'alice-claim':
+        secret = _clean_secret(payload.get('revealed_secret'))
+        if not secret or _hash_secret(secret) != swap.secret_hash:
+            return jsonify({'error': 'revealed_secret does not match this swap hash.'}), 400
+        swap.revealed_secret = secret
+
+    setattr(swap, field_name, txid)
+    if leg == 'bob-claim' and swap.status != 'completed':
+        _complete_swap_reputation(swap)
+        swap.completed_at = datetime.utcnow()
+    swap.status = next_status
+    swap.latest_note = note or default_note
+
+    try:
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        current_app.logger.exception('Error recording wallet adapter TXID')
+        return jsonify({'error': 'Could not record TXID.'}), 500
+
+    return jsonify(_swap_public_payload(swap))
+
+
+@main_bp.route('/api/swaps/<int:id>/verify/<leg>', methods=['POST'])
+def api_verify_swap_leg(id, leg):
+    swap = Swap.query.get_or_404(id)
+    leg = leg.replace('-', '_')
+
+    if not _watch_available(leg):
+        return jsonify({'verified': False, 'message': 'Watcher for this chain is not configured.'}), 503
+
+    try:
+        verified, message = _watch_swap_tx(swap, leg)
+        swap.adapter_error = None if verified else message
+        db.session.commit()
+    except WatcherError as exc:
+        db.session.rollback()
+        return jsonify({'verified': False, 'message': str(exc)}), 502
+    except SQLAlchemyError:
+        db.session.rollback()
+        current_app.logger.exception('Error verifying swap leg')
+        return jsonify({'verified': False, 'message': 'Could not save verification result.'}), 500
+
+    return jsonify({
+        'verified': verified,
+        'message': message,
+        'swap': _swap_public_payload(swap),
+    })
+
+
+@main_bp.route('/swaps/<int:id>/verify/<leg>', methods=['POST'])
+@login_required
+def verify_swap_leg(id, leg):
+    swap = Swap.query.get_or_404(id)
+    leg = leg.replace('-', '_')
+
+    if session['user_id'] not in _swap_participants(swap):
+        flash('You do not have permission to verify this swap.', 'error')
+        return redirect(url_for('main.dashboard'))
+
+    if not _watch_available(leg):
+        flash('Watcher for this chain is not configured yet.', 'error')
+        return redirect(url_for('main.swap_details', id=swap.id))
+
+    try:
+        verified, message = _watch_swap_tx(swap, leg)
+        swap.adapter_error = None if verified else message
+        db.session.commit()
+        flash(message, 'success' if verified else 'warning')
+    except WatcherError as exc:
+        db.session.rollback()
+        flash(f'Watcher error: {exc}', 'error')
+    except SQLAlchemyError:
+        db.session.rollback()
+        current_app.logger.exception('Error verifying swap leg')
+        flash('Could not save verification result.', 'error')
+
+    return redirect(url_for('main.swap_details', id=swap.id))
+
 
 @main_bp.route('/swaps/<int:id>/progress', methods=['POST'])
 @login_required
@@ -948,4 +1201,6 @@ def swap_details(id):
         is_alice=is_alice,
         alice_user=alice_user,
         bob_user=bob_user,
+        hns_watcher_configured=bool(current_app.config.get('HNS_WATCHER_BASE_URL')),
+        btc_watcher_configured=bool(current_app.config.get('BTC_WATCHER_BASE_URL')),
     )
