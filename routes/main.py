@@ -159,8 +159,21 @@ def _complete_swap_reputation(swap):
             user.completed_swaps = (user.completed_swaps or 0) + 1
 
 
+def _external_scheme():
+    forwarded_proto = request.headers.get('X-Forwarded-Proto', '').split(',')[0].strip()
+    if forwarded_proto in ['http', 'https']:
+        return forwarded_proto
+    if request.host.split(':', 1)[0] == 'liquidity.spot':
+        return 'https'
+    return request.scheme
+
+
 def _app_base_url():
-    return request.url_root.rstrip('/')
+    return f'{_external_scheme()}://{request.host}'.rstrip('/')
+
+
+def _external_url_for(endpoint, **values):
+    return url_for(endpoint, _external=True, _scheme=_external_scheme(), **values)
 
 
 def _swap_public_payload(swap):
@@ -194,7 +207,7 @@ def _swap_public_payload(swap):
             'bob_claim': bool(swap.bob_claim_verified_at),
         },
         'adapter_error': swap.adapter_error,
-        'wallet_intents_url': url_for('main.api_swap_intents', id=swap.id, _external=True) if request else None,
+        'wallet_intents_url': _external_url_for('main.api_swap_intents', id=swap.id) if request else None,
         'updated_at': swap.updated_at.isoformat() if swap.updated_at else None,
         'completed_at': swap.completed_at.isoformat() if swap.completed_at else None,
     }
@@ -1326,11 +1339,10 @@ def swap_details(id):
     alice_user = User.query.get(_swap_alice_id(swap))
     adapter_token = _ensure_adapter_token(swap)
     db.session.commit()
-    wallet_intents_url = url_for(
+    wallet_intents_url = _external_url_for(
         'main.api_wallet_swap_intents',
         id=swap.id,
-        token=adapter_token,
-        _external=True
+        token=adapter_token
     )
     bob_deeplink_url = 'bob://liquidityswap?intent=' + wallet_intents_url
     
