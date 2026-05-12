@@ -108,7 +108,7 @@
                         </thead>
                         <tbody>
                             {% for offer in offers %}
-                            <tr class="border-b border-gfa-grey/10 hover:bg-white/5">
+                            <tr id="offer-{{ offer.id }}" class="border-b border-gfa-grey/10 hover:bg-white/5">
                                 <td class="p-2 align-top">
                                     <div class="font-medium text-white">{{ offer.creator.username }}</div>
                                     {% if offer.creator_id == session.get('user_id') %}

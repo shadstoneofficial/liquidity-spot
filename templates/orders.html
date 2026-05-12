@@ -86,7 +86,7 @@
                     </thead>
                     <tbody>
                         {% for order in orders %}
-                            <tr class="border-b border-gfa-grey/10 hover:bg-white/5 {{ 'bg-white/5' if order.user_id == session.get('user_id') else '' }}">
+                            <tr id="order-{{ order.id }}" class="border-b border-gfa-grey/10 hover:bg-white/5 {{ 'bg-white/5' if order.user_id == session.get('user_id') else '' }}">
                                 <td class="p-2 text-sm text-gfa-grey whitespace-nowrap">
                                     {{ order.user.username }}
                                     {% if order.user_id == session.get('user_id') %}
