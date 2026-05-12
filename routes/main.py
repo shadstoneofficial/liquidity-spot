@@ -358,6 +358,74 @@ def bob_addon_manifest():
         'status': 'public-preview',
     })
 
+
+@main_bp.route('/api/channel', methods=['GET'])
+def api_liquidity_channel():
+    p2p_offers = P2POffer.query.filter_by(status='open').order_by(P2POffer.created_at.desc()).limit(25).all()
+    atomic_orders = Order.query.filter_by(status='open').order_by(Order.created_at.desc()).limit(25).all()
+
+    def user_payload(user):
+        if not user:
+            return {'id': None, 'username': 'Unknown'}
+        return {
+            'id': user.id,
+            'username': user.username,
+        }
+
+    def timestamp(value):
+        return value.isoformat() if value else None
+
+    return jsonify({
+        'id': 'liquidity-spot',
+        'name': 'Liquidity.spot',
+        'version': 1,
+        'generated_at': datetime.utcnow().isoformat(),
+        'links': {
+            'home': _external_url_for('main.p2p'),
+            'p2p': _external_url_for('main.p2p'),
+            'atomic_orders': _external_url_for('main.orders'),
+            'bob_download': 'https://bobwallet.org/download',
+        },
+        'requirements': {
+            'bob_wallet': 'May 2026 experimental Bob Wallet build required for automatic HNS lock/claim actions.',
+            'bob_wallet_download_url': 'https://bobwallet.org/download',
+        },
+        'p2p': {
+            'offers': [
+                {
+                    'id': offer.id,
+                    'creator': user_payload(offer.creator),
+                    'side': offer.side,
+                    'amount_hns': str(offer.amount_hns),
+                    'price_btc_per_hns': str(offer.price_btc_per_hns),
+                    'gems_stake': offer.gems_stake or 0,
+                    'payment_method': offer.payment_method,
+                    'notes': offer.notes,
+                    'status': offer.status,
+                    'created_at': timestamp(offer.created_at),
+                    'url': _external_url_for('main.p2p') + f'#offer-{offer.id}',
+                }
+                for offer in p2p_offers
+            ],
+        },
+        'atomic_swaps': {
+            'orders': [
+                {
+                    'id': order.id,
+                    'user': user_payload(order.user),
+                    'side': order.side,
+                    'amount_hns': str(order.amount_hns),
+                    'price_btc_per_hns': str(order.price_btc_per_hns),
+                    'gems_stake': order.gems_stake or 0,
+                    'status': order.status,
+                    'created_at': timestamp(order.created_at),
+                    'url': _external_url_for('main.orders') + f'#order-{order.id}',
+                }
+                for order in atomic_orders
+            ],
+        },
+    })
+
 @main_bp.route('/tutorial')
 def tutorial():
     return render_template('tutorial.html')
