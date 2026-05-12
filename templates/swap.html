@@ -59,6 +59,42 @@
         </div>
     {% endif %}
 
+    <div class="bg-black/30 p-6 rounded-lg">
+        <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-4">
+            <div>
+                <h2 class="text-xl font-bold text-white">Swap Messages</h2>
+                <p class="text-sm text-gfa-grey mt-1">Leave a note, ask for status, or record coordination details without changing the swap step.</p>
+            </div>
+            <div class="text-sm text-gfa-grey">
+                Alice: {{ alice_user.username if alice_user else 'Unknown' }}<br>
+                Bob: {{ bob_user.username if bob_user else 'Unknown' }}
+            </div>
+        </div>
+
+        <div class="space-y-3 max-h-[360px] overflow-y-auto pr-2">
+            {% if swap.messages %}
+                {% for message in swap.messages|sort(attribute='created_at') %}
+                    <div class="bg-black/40 rounded p-4 border border-gfa-grey/10">
+                        <div class="flex flex-col sm:flex-row sm:justify-between gap-1 text-sm mb-2">
+                            <span class="font-bold text-white">{{ message.user.username }}</span>
+                            <span class="text-gfa-grey">{{ message.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                        </div>
+                        <p class="text-gfa-grey whitespace-pre-wrap">{{ message.message }}</p>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p class="text-gfa-grey">No swap messages yet.</p>
+            {% endif %}
+        </div>
+
+        <form method="POST" action="{{ url_for('main.add_swap_message', id=swap.id) }}" class="mt-4 space-y-3">
+            <textarea name="message" rows="4" required class="w-full bg-black/50 border border-gfa-grey/30 rounded p-3 text-white" placeholder="Ask for status, share a TXID/explorer link, or record what you are waiting on."></textarea>
+            <button type="submit" class="bg-gfa-blue text-white font-bold px-4 py-2 rounded hover:bg-blue-600 transition">
+                Post Swap Note
+            </button>
+        </form>
+    </div>
+
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div class="bg-black/30 p-6 rounded-lg space-y-5">
             <div>

@@ -64,6 +64,16 @@ class Swap(db.Model):
     order = db.relationship('Order', backref='swap')
     matcher = db.relationship('User', foreign_keys=[matcher_id])
 
+class SwapMessage(db.Model):
+    __tablename__ = 'swap_messages'
+    id = db.Column(db.Integer, primary_key=True)
+    swap_id = db.Column(db.Integer, db.ForeignKey('swaps.id'), nullable=False)
+    user_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    swap = db.relationship('Swap', backref='messages')
+    user = db.relationship('User')
+
 class P2POffer(db.Model):
     __tablename__ = 'p2p_offers'
     id = db.Column(db.Integer, primary_key=True)

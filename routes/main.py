@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app, Response, jsonify
-from models import db, User, Order, Swap, P2POffer, P2PTrade, P2PTradeMessage, P2PTradeParticipantState
+from models import db, User, Order, Swap, SwapMessage, P2POffer, P2PTrade, P2PTradeMessage, P2PTradeParticipantState
 import os
 from routes.auth import login_required
 import secrets
@@ -1383,6 +1383,37 @@ def progress_swap(id):
         db.session.rollback()
         current_app.logger.exception('Error updating atomic swap progress')
         flash('Could not update swap progress. Please try again.', 'error')
+
+    return redirect(url_for('main.swap_details', id=swap.id))
+
+
+@main_bp.route('/swaps/<int:id>/message', methods=['POST'])
+@login_required
+def add_swap_message(id):
+    swap = Swap.query.get_or_404(id)
+    user_id = session['user_id']
+
+    if user_id not in _swap_participants(swap):
+        flash('You do not have permission to post in this swap.', 'error')
+        return redirect(url_for('main.dashboard'))
+
+    message = (request.form.get('message') or '').strip()
+    if not message:
+        flash('Message cannot be empty.', 'error')
+        return redirect(url_for('main.swap_details', id=swap.id))
+
+    db.session.add(SwapMessage(
+        swap_id=swap.id,
+        user_id=user_id,
+        message=message
+    ))
+    try:
+        db.session.commit()
+        flash('Swap note added.', 'success')
+    except SQLAlchemyError:
+        db.session.rollback()
+        current_app.logger.exception('Error adding atomic swap note')
+        flash('Could not add swap note. Please try again.', 'error')
 
     return redirect(url_for('main.swap_details', id=swap.id))
 
