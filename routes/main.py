@@ -419,7 +419,7 @@ def api_liquidity_channel():
                     'gems_stake': order.gems_stake or 0,
                     'status': order.status,
                     'created_at': timestamp(order.created_at),
-                    'url': _external_url_for('main.orders') + f'#order-{order.id}',
+                    'url': _external_url_for('main.order_details', order_id=order.id),
                 }
                 for order in atomic_orders
             ],
@@ -922,6 +922,21 @@ def orders():
         current_price = 0.000000500000
         
     return render_template('orders.html', orders=orders, current_price=current_price)
+
+
+@main_bp.route('/orders/<int:order_id>', methods=['GET'])
+def order_details(order_id):
+    order = Order.query.get_or_404(order_id)
+    existing_swap = order.swap[0] if order.swap else None
+    total_btc = Decimal(order.amount_hns) * Decimal(order.price_btc_per_hns)
+
+    return render_template(
+        'order_details.html',
+        order=order,
+        existing_swap=existing_swap,
+        total_btc=total_btc,
+    )
+
 
 @main_bp.route('/orders/<int:order_id>/accept', methods=['POST'])
 def accept_order(order_id):

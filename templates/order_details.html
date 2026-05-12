@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}Atomic Order #{{ order.id }} | Liquidity.spot{% endblock %}
+
+{% block content %}
+{% set is_owner = order.user_id == session.get('user_id') %}
+{% set maker_role = 'Alice (HNS seller)' if order.side == 'sell' else 'Bob (HNS buyer)' %}
+{% set taker_role = 'Bob (HNS buyer)' if order.side == 'sell' else 'Alice (HNS seller)' %}
+
+<div class="max-w-5xl mx-auto space-y-6">
+    <div class="rounded-lg border border-gfa-grey/20 bg-black/30 p-6">
+        <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div>
+                <p class="text-sm font-bold uppercase tracking-wide text-gfa-grey">Atomic Swap Order</p>
+                <h1 class="mt-1 text-4xl font-bold text-gfa-light">Order #{{ order.id }}</h1>
+                <p class="mt-2 max-w-2xl text-gfa-grey">
+                    Review the terms before accepting. Accepting creates a swap room; it does not lock HNS or BTC by itself.
+                </p>
+            </div>
+            <span class="inline-flex w-fit rounded bg-white/10 px-3 py-1 text-sm font-bold uppercase {{ 'text-green-300' if order.status == 'open' else 'text-yellow-200' }}">
+                {{ order.status }}
+            </span>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <section class="rounded-lg border border-gfa-grey/20 bg-black/30 p-6 lg:col-span-2">
+            <h2 class="mb-4 text-2xl font-bold text-white">Order Terms</h2>
+            <dl class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div class="rounded border border-gfa-grey/20 bg-black/30 p-4">
+                    <dt class="text-xs font-bold uppercase text-gfa-grey">Maker</dt>
+                    <dd class="mt-1 text-lg text-white">{{ order.user.username }}</dd>
+                </div>
+                <div class="rounded border border-gfa-grey/20 bg-black/30 p-4">
+                    <dt class="text-xs font-bold uppercase text-gfa-grey">Maker Role</dt>
+                    <dd class="mt-1 text-lg text-white">{{ maker_role }}</dd>
+                </div>
+                <div class="rounded border border-gfa-grey/20 bg-black/30 p-4">
+                    <dt class="text-xs font-bold uppercase text-gfa-grey">Side</dt>
+                    <dd class="mt-1 text-lg font-bold uppercase {{ 'text-green-300' if order.side == 'buy' else 'text-red-300' }}">{{ order.side }} HNS</dd>
+                </div>
+                <div class="rounded border border-gfa-grey/20 bg-black/30 p-4">
+                    <dt class="text-xs font-bold uppercase text-gfa-grey">Taker Becomes</dt>
+                    <dd class="mt-1 text-lg text-white">{{ taker_role }}</dd>
+                </div>
+                <div class="rounded border border-gfa-grey/20 bg-black/30 p-4">
+                    <dt class="text-xs font-bold uppercase text-gfa-grey">HNS Amount</dt>
+                    <dd class="mt-1 font-mono text-lg text-white">{{ order.amount_hns }} HNS</dd>
+                </div>
+                <div class="rounded border border-gfa-grey/20 bg-black/30 p-4">
+                    <dt class="text-xs font-bold uppercase text-gfa-grey">BTC/HNS Price</dt>
+                    <dd class="mt-1 font-mono text-lg text-white">{{ '%.12f'|format(order.price_btc_per_hns) }} BTC</dd>
+                </div>
+                <div class="rounded border border-gfa-grey/20 bg-black/30 p-4">
+                    <dt class="text-xs font-bold uppercase text-gfa-grey">Total BTC</dt>
+                    <dd class="mt-1 font-mono text-lg text-white">{{ '%.18f'|format(total_btc) }} BTC</dd>
+                </div>
+                <div class="rounded border border-gfa-grey/20 bg-black/30 p-4">
+                    <dt class="text-xs font-bold uppercase text-gfa-grey">Gems Stake</dt>
+                    <dd class="mt-1 text-lg text-white">{{ order.gems_stake or 0 }} 💎</dd>
+                </div>
+            </dl>
+        </section>
+
+        <aside class="space-y-4">
+            <div class="rounded-lg border border-yellow-500/30 bg-yellow-900/20 p-4 text-sm text-yellow-100">
+                <p class="font-bold text-yellow-200">Experimental Flow</p>
+                <p class="mt-2">
+                    Use small learning amounts. Verify the swap room, hash, timelocks, lock TXIDs, claims, and refund path before signing anything.
+                </p>
+            </div>
+            <div class="rounded-lg border border-gfa-light/30 bg-gfa-light/10 p-4 text-sm text-gfa-light">
+                <p class="font-bold text-white">Bob Wallet Required</p>
+                <p class="mt-2">
+                    Automatic HNS lock/claim actions require the May 2026 experimental version of Bob Wallet.
+                </p>
+                <a href="https://bobwallet.org/download" target="_blank" rel="noopener noreferrer" class="mt-3 inline-block font-bold underline hover:text-white">
+                    Download Bob Wallet
+                </a>
+            </div>
+        </aside>
+    </div>
+
+    <section class="rounded-lg border border-gfa-grey/20 bg-black/30 p-6">
+        <h2 class="mb-4 text-2xl font-bold text-white">What Happens Next</h2>
+        <ol class="space-y-3 text-gfa-grey">
+            <li><span class="font-bold text-white">1. Accept creates a swap room.</span> No funds are locked just by accepting.</li>
+            <li><span class="font-bold text-white">2. Alice is the HNS seller.</span> Alice prepares the secret/hash and locks HNS first.</li>
+            <li><span class="font-bold text-white">3. Bob waits for Alice's HNS lock.</span> Bob should not lock BTC until Alice's HNS lock is visible and verified.</li>
+            <li><span class="font-bold text-white">4. Claims reveal the secret.</span> Alice claiming BTC reveals the secret Bob needs to claim HNS.</li>
+        </ol>
+    </section>
+
+    <div class="flex flex-wrap items-center gap-3 rounded-lg border border-gfa-grey/20 bg-black/30 p-6">
+        {% if existing_swap %}
+            <a href="{{ url_for('main.swap_details', id=existing_swap.id) }}" class="rounded bg-gfa-light px-5 py-3 font-bold text-gfa-dark hover:bg-white transition">
+                Open Swap Room
+            </a>
+            <span class="text-sm text-gfa-grey">This order has already been matched.</span>
+        {% elif order.status != 'open' %}
+            <span class="text-sm text-gfa-grey">This order is no longer open.</span>
+            <a href="{{ url_for('main.orders') }}" class="rounded border border-gfa-grey/30 px-5 py-3 font-bold text-white hover:bg-white/10 transition">
+                Back to Order Book
+            </a>
+        {% elif is_owner %}
+            <span class="text-sm text-gfa-grey">This is your order. Wait for a counterparty; do not lock funds yet.</span>
+            <a href="{{ url_for('main.orders') }}" class="rounded border border-gfa-grey/30 px-5 py-3 font-bold text-white hover:bg-white/10 transition">
+                Back to Order Book
+            </a>
+        {% else %}
+            <form method="POST" action="{{ url_for('main.accept_order', order_id=order.id) }}" onsubmit="return confirm('Accept this atomic swap order? This creates a swap room, but you should not lock funds until the room shows the correct next step.');">
+                <button type="submit" class="rounded bg-gfa-light px-5 py-3 font-bold text-gfa-dark hover:bg-white transition">
+                    Accept and Create Swap Room
+                </button>
+            </form>
+            <a href="{{ url_for('main.orders') }}" class="rounded border border-gfa-grey/30 px-5 py-3 font-bold text-white hover:bg-white/10 transition">
+                Back to Order Book
+            </a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
