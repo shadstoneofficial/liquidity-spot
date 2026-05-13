@@ -35,7 +35,7 @@ class Swap(db.Model):
     role_alice_user_id = db.Column(db.String(36))             # who locks first (HNS if poster sells, etc.)
     timelock_alice_sec = db.Column(db.Integer, default=172800)  # 48h
     timelock_bob_sec = db.Column(db.Integer, default=86400)     # 24h
-    status = db.Column(db.String(30), default='initiated')    # pending_secret / initiated / alice_locked / bob_locked / alice_claimed / completed / canceled / refunded
+    status = db.Column(db.String(30), default='initiated')    # pending_secret / initiated / alice_locked / bob_locked / alice_claimed / completed / canceled / refunded / disputed
     gems_escrow = db.Column(db.Integer, default=0)            # staked amount held in limbo
     alice_lock_txid = db.Column(db.String(128))
     bob_lock_txid = db.Column(db.String(128))

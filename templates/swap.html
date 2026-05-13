@@ -19,7 +19,8 @@
     'alice_claimed': 4,
     'completed': 5,
     'refunded': 5,
-    'canceled': 5
+    'canceled': 5,
+    'disputed': 5
 }.get(swap.status, 0) %}
 
 <div class="max-w-5xl mx-auto space-y-6">
@@ -75,10 +76,16 @@
                     <p class="text-red-200">Current step pending for</p>
                     <p class="text-2xl font-bold text-white" data-countup-since="{{ pending_since.isoformat() }}Z">Calculating...</p>
                     <p class="text-red-100 mt-2">
-                        Timeout cancel:
+                        Stale action unlock:
                         <span data-countdown-to="{{ timeout_at.isoformat() }}Z">Calculating...</span>
                     </p>
-                    <p class="text-xs text-red-200 mt-2">Cancel is only available before funds are locked and after {{ stale_cancel_hours }} hours without progress.</p>
+                    <p class="text-xs text-red-200 mt-2">
+                        {% if funds_recorded %}
+                            Funds appear to be in motion, so timeout leads to review instead of cancel.
+                        {% else %}
+                            Cancel is only available before funds are locked and after {{ stale_cancel_hours }} hours without progress.
+                        {% endif %}
+                    </p>
                 </div>
             </div>
 
@@ -86,6 +93,13 @@
                 <form method="POST" action="{{ url_for('main.timeout_cancel_swap', id=swap.id) }}" class="mt-4" onsubmit="return confirm('Cancel this stale swap? This only updates Liquidity.spot; it does not undo any on-chain transaction.')">
                     <button type="submit" class="bg-red-700 text-white font-bold py-2 px-5 rounded hover:bg-red-600 transition">
                         Cancel Stale Swap
+                    </button>
+                </form>
+            {% elif can_request_review %}
+                <form method="POST" action="{{ url_for('main.request_swap_review', id=swap.id) }}" class="mt-4 space-y-3" onsubmit="return confirm('Request review for this stale post-lock swap?')">
+                    <textarea name="note" rows="2" class="w-full bg-black/40 border border-red-400/40 rounded p-3 text-white" placeholder="Briefly explain what is stuck or what you already verified."></textarea>
+                    <button type="submit" class="bg-red-700 text-white font-bold py-2 px-5 rounded hover:bg-red-600 transition">
+                        Request Review
                     </button>
                 </form>
             {% endif %}
@@ -325,10 +339,16 @@
                 <p class="text-gfa-grey">Waiting for Alice to generate the secret hash.</p>
             {% endif %}
         </div>
-    {% elif swap.status in ['completed', 'refunded', 'canceled'] %}
+    {% elif swap.status in ['completed', 'refunded', 'canceled', 'disputed'] %}
         <div class="bg-black/30 p-6 rounded-lg">
             <h2 class="text-xl font-bold text-white mb-2">Final State</h2>
-            <p class="text-gfa-grey">This swap is marked {{ swap.status }}.</p>
+            <p class="text-gfa-grey">
+                {% if swap.status == 'disputed' %}
+                    This swap is under review. Continue using messages to keep an audit trail.
+                {% else %}
+                    This swap is marked {{ swap.status }}.
+                {% endif %}
+            </p>
         </div>
     {% else %}
         <div class="bg-black/30 p-6 rounded-lg">
@@ -424,6 +444,17 @@
                 The old swap is canceled. Review the BTC/HNS price before creating a new open order.
             </p>
             <form method="POST" action="{{ url_for('main.relist_swap_order', id=swap.id) }}" class="space-y-4">
+                <div>
+                    <label class="block text-gfa-grey mb-1">New Order Side</label>
+                    <select name="side" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white">
+                        <option value="buy" {{ 'selected' if default_relist_side == 'buy' else '' }}>Buy HNS (Sell BTC)</option>
+                        <option value="sell" {{ 'selected' if default_relist_side == 'sell' else '' }}>Sell HNS (Buy BTC)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gfa-grey mb-1">HNS Amount</label>
+                    <input type="text" inputmode="decimal" name="amount_hns" value="{{ swap.order.amount_hns }}" required class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white font-mono">
+                </div>
                 <div>
                     <label class="block text-gfa-grey mb-1">Refreshed BTC/HNS Price</label>
                     <input type="text" inputmode="decimal" name="price" value="{{ swap.order.price_btc_per_hns }}" required class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white font-mono">

@@ -1521,6 +1521,50 @@ def timeout_cancel_swap(id):
     return redirect(url_for('main.swap_details', id=swap.id))
 
 
+@main_bp.route('/swaps/<int:id>/request-review', methods=['POST'])
+@login_required
+def request_swap_review(id):
+    swap = Swap.query.get_or_404(id)
+    user_id = session['user_id']
+
+    if user_id not in _swap_participants(swap):
+        flash('You do not have permission to request review for this swap.', 'error')
+        return redirect(url_for('main.dashboard'))
+
+    next_step = _swap_next_step(swap)
+    pending_since = swap.updated_at or swap.created_at or datetime.utcnow()
+    timeout_at = pending_since + timedelta(hours=SWAP_STALE_CANCEL_HOURS)
+    funds_recorded = bool(swap.alice_lock_txid or swap.bob_lock_txid or swap.alice_claim_txid or swap.bob_claim_txid)
+    note = (request.form.get('note') or '').strip()
+
+    if not next_step or swap.status in ['completed', 'refunded', 'canceled', 'disputed']:
+        flash('This swap is already in a final or review state.', 'error')
+        return redirect(url_for('main.swap_details', id=swap.id))
+
+    if not funds_recorded:
+        flash('No lock or claim TXID has been recorded yet. Use timeout cancel before funds are locked.', 'error')
+        return redirect(url_for('main.swap_details', id=swap.id))
+
+    if user_id == next_step['user_id']:
+        flash('You are the next actor for this swap. Post an update or complete the required step instead.', 'error')
+        return redirect(url_for('main.swap_details', id=swap.id))
+
+    if datetime.utcnow() < timeout_at:
+        flash(f'Review request unlocks after {SWAP_STALE_CANCEL_HOURS} hours with no step progress.', 'error')
+        return redirect(url_for('main.swap_details', id=swap.id))
+
+    swap.status = 'disputed'
+    swap.latest_note = 'Review requested after the post-lock step timed out.'
+    db.session.add(SwapMessage(
+        swap_id=swap.id,
+        user_id=user_id,
+        message=note or 'Requested review after timeout because the required post-lock step was not completed.'
+    ))
+    db.session.commit()
+    flash('Swap review requested.', 'success')
+    return redirect(url_for('main.swap_details', id=swap.id))
+
+
 @main_bp.route('/swaps/<int:id>/relist', methods=['POST'])
 @login_required
 def relist_swap_order(id):
@@ -1535,19 +1579,26 @@ def relist_swap_order(id):
         flash('Only canceled swaps can be relisted.', 'error')
         return redirect(url_for('main.swap_details', id=swap.id))
 
+    side = (request.form.get('side') or '').strip().lower()
+    amount_hns = request.form.get('amount_hns')
     price = request.form.get('price')
     try:
+        amount_value = Decimal(amount_hns)
         price_value = Decimal(price)
-        if price_value <= 0:
+        if amount_value <= 0 or price_value <= 0:
             raise InvalidOperation()
     except (InvalidOperation, TypeError, ValueError):
-        flash('Enter a valid refreshed BTC/HNS price before relisting.', 'error')
+        flash('Enter a valid refreshed HNS amount and BTC/HNS price before relisting.', 'error')
+        return redirect(url_for('main.swap_details', id=swap.id))
+
+    if side not in ['buy', 'sell']:
+        flash('Choose whether the new order is buying or selling HNS.', 'error')
         return redirect(url_for('main.swap_details', id=swap.id))
 
     order = Order(
         user_id=user_id,
-        side='sell' if _is_swap_alice(swap, user_id) else 'buy',
-        amount_hns=swap.order.amount_hns,
+        side=side,
+        amount_hns=amount_value,
         price_btc_per_hns=price_value,
         gems_stake=swap.order.gems_stake,
         status='open'
@@ -1556,7 +1607,7 @@ def relist_swap_order(id):
     db.session.add(SwapMessage(
         swap_id=swap.id,
         user_id=user_id,
-        message=f'Relisted a new order at {price_value} BTC/HNS after reviewing the price.'
+        message=f'Relisted a new {side.upper()} order for {amount_value} HNS at {price_value} BTC/HNS after reviewing the market.'
     ))
     db.session.commit()
     flash('New order listed with refreshed price.', 'success')
@@ -1611,6 +1662,14 @@ def swap_details(id):
         and user.id != next_step['user_id']
         and datetime.utcnow() >= timeout_at
     )
+    can_request_review = (
+        next_step
+        and funds_recorded
+        and swap.status not in ['completed', 'refunded', 'canceled', 'disputed']
+        and user.id != next_step['user_id']
+        and datetime.utcnow() >= timeout_at
+    )
+    default_relist_side = 'sell' if is_alice else 'buy'
     adapter_token = _ensure_adapter_token(swap)
     db.session.commit()
     wallet_intents_url = _external_url_for(
@@ -1646,5 +1705,7 @@ def swap_details(id):
         timeout_at=timeout_at,
         stale_cancel_hours=SWAP_STALE_CANCEL_HOURS,
         can_timeout_cancel=can_timeout_cancel,
+        can_request_review=can_request_review,
         funds_recorded=funds_recorded,
+        default_relist_side=default_relist_side,
     )
