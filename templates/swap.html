@@ -53,6 +53,45 @@
         {% endfor %}
     </div>
 
+    {% if next_step %}
+        <div class="bg-red-950/60 border border-red-500/60 rounded-lg p-5 text-red-50">
+            <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                <div>
+                    <p class="text-xs uppercase tracking-wide text-red-200">Action Required</p>
+                    <h2 class="text-2xl font-bold text-white mt-1">{{ next_step.title }}</h2>
+                    <p class="text-sm text-red-100 mt-2">
+                        Next actor: <strong>{{ next_step.role }}</strong>
+                        {% if next_step.user_id == user.id %}
+                            <span class="font-bold">(you)</span>
+                        {% endif %}
+                    </p>
+                    <ol class="list-decimal list-inside space-y-1 text-sm text-red-100 mt-3">
+                        {% for instruction in next_step.instructions %}
+                            <li>{{ instruction }}</li>
+                        {% endfor %}
+                    </ol>
+                </div>
+                <div class="rounded border border-red-400/40 bg-black/30 p-4 text-sm min-w-[240px]">
+                    <p class="text-red-200">Current step pending for</p>
+                    <p class="text-2xl font-bold text-white" data-countup-since="{{ pending_since.isoformat() }}Z">Calculating...</p>
+                    <p class="text-red-100 mt-2">
+                        Timeout cancel:
+                        <span data-countdown-to="{{ timeout_at.isoformat() }}Z">Calculating...</span>
+                    </p>
+                    <p class="text-xs text-red-200 mt-2">Cancel is only available before funds are locked and after {{ stale_cancel_hours }} hours without progress.</p>
+                </div>
+            </div>
+
+            {% if can_timeout_cancel %}
+                <form method="POST" action="{{ url_for('main.timeout_cancel_swap', id=swap.id) }}" class="mt-4" onsubmit="return confirm('Cancel this stale swap? This only updates Liquidity.spot; it does not undo any on-chain transaction.')">
+                    <button type="submit" class="bg-red-700 text-white font-bold py-2 px-5 rounded hover:bg-red-600 transition">
+                        Cancel Stale Swap
+                    </button>
+                </form>
+            {% endif %}
+        </div>
+    {% endif %}
+
     {% if swap.latest_note %}
         <div class="bg-green-900/20 border border-green-500/30 rounded-lg p-4 text-green-100">
             {{ swap.latest_note }}
@@ -378,8 +417,58 @@
         </div>
     {% endif %}
 
+    {% if swap.status == 'canceled' %}
+        <div class="bg-black/30 p-6 rounded-lg border border-yellow-500/30">
+            <h2 class="text-xl font-bold text-yellow-200 mb-3">Relist With Refreshed Price</h2>
+            <p class="text-sm text-yellow-100 mb-4">
+                The old swap is canceled. Review the BTC/HNS price before creating a new open order.
+            </p>
+            <form method="POST" action="{{ url_for('main.relist_swap_order', id=swap.id) }}" class="space-y-4">
+                <div>
+                    <label class="block text-gfa-grey mb-1">Refreshed BTC/HNS Price</label>
+                    <input type="text" inputmode="decimal" name="price" value="{{ swap.order.price_btc_per_hns }}" required class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white font-mono">
+                </div>
+                <button type="submit" class="bg-gfa-light text-gfa-dark font-bold py-2 px-5 rounded hover:bg-white transition">
+                    Relist New Order
+                </button>
+            </form>
+        </div>
+    {% endif %}
+
     <div class="bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-4 text-sm text-yellow-100">
         This workflow records and validates the swap sequence inside Liquidity.spot. Before broadcasting any transaction, each participant must independently verify the HTLC script, amount, hash, timelock, confirmations, and refund path in their wallet or explorer.
     </div>
 </div>
+<script>
+    function formatDuration(ms) {
+        const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+        const days = Math.floor(totalSeconds / 86400);
+        const hours = Math.floor((totalSeconds % 86400) / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+        if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+        if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+        return `${minutes}m ${seconds}s`;
+    }
+
+    function updateSwapTimers() {
+        const now = Date.now();
+        document.querySelectorAll('[data-countup-since]').forEach((element) => {
+            const since = Date.parse(element.dataset.countupSince);
+            if (!Number.isNaN(since)) {
+                element.textContent = formatDuration(now - since);
+            }
+        });
+        document.querySelectorAll('[data-countdown-to]').forEach((element) => {
+            const deadline = Date.parse(element.dataset.countdownTo);
+            if (!Number.isNaN(deadline)) {
+                const remaining = deadline - now;
+                element.textContent = remaining > 0 ? formatDuration(remaining) : 'available now';
+            }
+        });
+    }
+
+    updateSwapTimers();
+    setInterval(updateSwapTimers, 1000);
+</script>
 {% endblock %}

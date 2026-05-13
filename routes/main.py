@@ -7,7 +7,7 @@ import hashlib
 import requests
 import re
 from decimal import Decimal, InvalidOperation
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlalchemy.exc import SQLAlchemyError
 from services.gems_service import (
     GemsServiceError,
@@ -19,6 +19,7 @@ from services.chain_watchers import WatcherError, verify_bitcoin_tx, verify_hns_
 from services.swap_adapters import build_swap_intents
 
 main_bp = Blueprint('main', __name__)
+SWAP_STALE_CANCEL_HOURS = 24
 
 
 def _is_gfavip_session():
@@ -150,6 +151,64 @@ def _is_swap_alice(swap, user_id):
 
 def _is_swap_bob(swap, user_id):
     return user_id == _swap_bob_id(swap)
+
+
+def _swap_next_step(swap):
+    alice_id = _swap_alice_id(swap)
+    bob_id = _swap_bob_id(swap)
+    steps = {
+        'pending_secret': {
+            'role': 'Alice',
+            'user_id': alice_id,
+            'title': 'Alice needs to generate the secret hash.',
+            'instructions': [
+                'Open this swap room and generate the secret hash.',
+                'Do not lock HNS until the secret hash is visible in the room.',
+                'Post a message if you need more time.'
+            ],
+        },
+        'initiated': {
+            'role': 'Alice',
+            'user_id': alice_id,
+            'title': 'Alice needs to post the HNS lock transaction.',
+            'instructions': [
+                'Verify the amount, hash, refund window, and HNS lock details.',
+                'Broadcast the HNS lock from your wallet only after the details match.',
+                'Record the HNS lock TXID in this room.'
+            ],
+        },
+        'alice_locked': {
+            'role': 'Bob',
+            'user_id': bob_id,
+            'title': "Bob needs to verify Alice's HNS lock and post the BTC lock.",
+            'instructions': [
+                "Verify Alice's HNS lock TXID, amount, hash, and confirmations.",
+                'Broadcast the BTC lock only after the HNS lock checks out.',
+                'Record the BTC lock TXID in this room.'
+            ],
+        },
+        'bob_locked': {
+            'role': 'Alice',
+            'user_id': alice_id,
+            'title': "Alice needs to verify Bob's BTC lock and claim BTC.",
+            'instructions': [
+                "Verify Bob's BTC lock TXID, amount, hash, and confirmations.",
+                'Claim BTC with the secret when you are satisfied.',
+                'Record the BTC claim TXID and revealed secret in this room.'
+            ],
+        },
+        'alice_claimed': {
+            'role': 'Bob',
+            'user_id': bob_id,
+            'title': 'Bob needs to claim HNS using the revealed secret.',
+            'instructions': [
+                "Verify Alice's BTC claim revealed the correct secret.",
+                'Use the revealed secret to claim HNS.',
+                'Record the HNS claim TXID to complete the swap.'
+            ],
+        },
+    }
+    return steps.get(swap.status)
 
 
 def _complete_swap_reputation(swap):
@@ -1417,6 +1476,92 @@ def add_swap_message(id):
 
     return redirect(url_for('main.swap_details', id=swap.id))
 
+
+@main_bp.route('/swaps/<int:id>/timeout-cancel', methods=['POST'])
+@login_required
+def timeout_cancel_swap(id):
+    swap = Swap.query.get_or_404(id)
+    user_id = session['user_id']
+
+    if user_id not in _swap_participants(swap):
+        flash('You do not have permission to cancel this swap.', 'error')
+        return redirect(url_for('main.dashboard'))
+
+    next_step = _swap_next_step(swap)
+    pending_since = swap.updated_at or swap.created_at or datetime.utcnow()
+    timeout_at = pending_since + timedelta(hours=SWAP_STALE_CANCEL_HOURS)
+    funds_recorded = bool(swap.alice_lock_txid or swap.bob_lock_txid or swap.alice_claim_txid or swap.bob_claim_txid)
+
+    if not next_step or swap.status in ['completed', 'refunded', 'canceled']:
+        flash('This swap is already in a final state.', 'error')
+        return redirect(url_for('main.swap_details', id=swap.id))
+
+    if funds_recorded or swap.status not in ['pending_secret', 'initiated']:
+        flash('This swap has moved beyond the safe cancel window. Use the refund path or messages instead.', 'error')
+        return redirect(url_for('main.swap_details', id=swap.id))
+
+    if user_id == next_step['user_id']:
+        flash('You are the next actor for this swap. Cancel is only available to the waiting counterparty after the timeout.', 'error')
+        return redirect(url_for('main.swap_details', id=swap.id))
+
+    if datetime.utcnow() < timeout_at:
+        flash(f'Timeout cancel unlocks after {SWAP_STALE_CANCEL_HOURS} hours with no step progress.', 'error')
+        return redirect(url_for('main.swap_details', id=swap.id))
+
+    swap.status = 'canceled'
+    swap.latest_note = f'Swap canceled after {SWAP_STALE_CANCEL_HOURS} hours without the required next step.'
+    swap.completed_at = datetime.utcnow()
+    db.session.add(SwapMessage(
+        swap_id=swap.id,
+        user_id=user_id,
+        message='Canceled after timeout because the required next step was not completed.'
+    ))
+    db.session.commit()
+    flash('Swap canceled after timeout.', 'success')
+    return redirect(url_for('main.swap_details', id=swap.id))
+
+
+@main_bp.route('/swaps/<int:id>/relist', methods=['POST'])
+@login_required
+def relist_swap_order(id):
+    swap = Swap.query.get_or_404(id)
+    user_id = session['user_id']
+
+    if user_id not in _swap_participants(swap):
+        flash('You do not have permission to relist from this swap.', 'error')
+        return redirect(url_for('main.dashboard'))
+
+    if swap.status != 'canceled':
+        flash('Only canceled swaps can be relisted.', 'error')
+        return redirect(url_for('main.swap_details', id=swap.id))
+
+    price = request.form.get('price')
+    try:
+        price_value = Decimal(price)
+        if price_value <= 0:
+            raise InvalidOperation()
+    except (InvalidOperation, TypeError, ValueError):
+        flash('Enter a valid refreshed BTC/HNS price before relisting.', 'error')
+        return redirect(url_for('main.swap_details', id=swap.id))
+
+    order = Order(
+        user_id=user_id,
+        side='sell' if _is_swap_alice(swap, user_id) else 'buy',
+        amount_hns=swap.order.amount_hns,
+        price_btc_per_hns=price_value,
+        gems_stake=swap.order.gems_stake,
+        status='open'
+    )
+    db.session.add(order)
+    db.session.add(SwapMessage(
+        swap_id=swap.id,
+        user_id=user_id,
+        message=f'Relisted a new order at {price_value} BTC/HNS after reviewing the price.'
+    ))
+    db.session.commit()
+    flash('New order listed with refreshed price.', 'success')
+    return redirect(url_for('main.orders'))
+
 @main_bp.route('/orders/<int:order_id>/cancel', methods=['POST'])
 @login_required
 def cancel_order(order_id):
@@ -1441,6 +1586,10 @@ def cancel_order(order_id):
 def swap_details(id):
     swap = Swap.query.get_or_404(id)
     user = User.query.get(session['user_id'])
+    if not user:
+        session.clear()
+        flash('Your session expired. Please open the swap again.', 'error')
+        return redirect(url_for('main.index'))
     
     # Check if user is involved
     if user.id != swap.order.user_id and user.id != swap.matcher_id:
@@ -1451,6 +1600,17 @@ def swap_details(id):
     is_alice = _is_swap_alice(swap, user.id)
     bob_user = User.query.get(_swap_bob_id(swap))
     alice_user = User.query.get(_swap_alice_id(swap))
+    next_step = _swap_next_step(swap)
+    pending_since = swap.updated_at or swap.created_at or datetime.utcnow()
+    timeout_at = pending_since + timedelta(hours=SWAP_STALE_CANCEL_HOURS)
+    funds_recorded = bool(swap.alice_lock_txid or swap.bob_lock_txid or swap.alice_claim_txid or swap.bob_claim_txid)
+    can_timeout_cancel = (
+        next_step
+        and not funds_recorded
+        and swap.status in ['pending_secret', 'initiated']
+        and user.id != next_step['user_id']
+        and datetime.utcnow() >= timeout_at
+    )
     adapter_token = _ensure_adapter_token(swap)
     db.session.commit()
     wallet_intents_url = _external_url_for(
@@ -1481,4 +1641,10 @@ def swap_details(id):
         btc_watcher_configured=bool(current_app.config.get('BTC_WATCHER_BASE_URL')),
         wallet_intents_url=wallet_intents_url,
         bob_deeplink_url=bob_deeplink_url,
+        next_step=next_step,
+        pending_since=pending_since,
+        timeout_at=timeout_at,
+        stale_cancel_hours=SWAP_STALE_CANCEL_HOURS,
+        can_timeout_cancel=can_timeout_cancel,
+        funds_recorded=funds_recorded,
     )
