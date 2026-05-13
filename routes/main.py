@@ -1061,6 +1061,11 @@ def accept_order(order_id):
         
     return redirect(url_for('main.swap_details', id=swap.id))
 
+
+@main_bp.route('/swaps')
+def swaps_index():
+    return redirect(url_for('main.orders'))
+
 @main_bp.route('/swaps/<int:id>/initiate', methods=['POST'])
 @login_required
 def initiate_swap(id):

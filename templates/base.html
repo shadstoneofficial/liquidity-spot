@@ -150,6 +150,53 @@
         });
     </script>
 
+    <section class="border-y border-gfa-light/20 bg-black/35">
+        <div class="container mx-auto px-4 py-3">
+            {% if hellobar_items %}
+                <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                    <div class="min-w-0">
+                        <p class="text-xs uppercase tracking-wide {{ 'text-red-200' if hellobar_primary.user_is_next else 'text-gfa-light' }}">
+                            {{ hellobar_count }} active {{ 'trade' if hellobar_count == 1 else 'trades' }}
+                        </p>
+                        <p class="font-bold text-white truncate">
+                            {% if hellobar_primary.user_is_next %}
+                                Action needed:
+                            {% else %}
+                                Latest:
+                            {% endif %}
+                            {{ hellobar_primary.label }} - {{ hellobar_primary.detail }}
+                        </p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        {% for item in hellobar_items %}
+                            <a href="{{ item.href }}" class="rounded border px-3 py-1.5 text-sm font-bold transition {{ 'border-red-400/60 bg-red-900/40 text-red-100 hover:bg-red-800/60' if item.user_is_next else 'border-gfa-light/30 bg-gfa-light/10 text-gfa-light hover:bg-gfa-light/20' }}">
+                                {{ item.label }}
+                            </a>
+                        {% endfor %}
+                        <a href="{{ url_for('main.dashboard') }}" class="rounded border border-gfa-grey/20 bg-black/30 px-3 py-1.5 text-sm text-gfa-grey hover:text-white hover:border-gfa-grey/40">
+                            Dashboard
+                        </a>
+                    </div>
+                </div>
+            {% else %}
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <p class="text-sm text-gfa-grey">
+                        <strong class="text-white">No active trades yet.</strong>
+                        Browse the alpha atomic swap order book or start a P2P trade.
+                    </p>
+                    <div class="flex flex-wrap gap-2">
+                        <a href="{{ url_for('main.swaps_index') }}" class="rounded bg-gfa-light px-3 py-1.5 text-sm font-bold text-gfa-dark hover:bg-white transition">
+                            View Atomic Swaps
+                        </a>
+                        <a href="{{ url_for('main.p2p') }}" class="rounded border border-gfa-light/30 px-3 py-1.5 text-sm font-bold text-gfa-light hover:bg-gfa-light/10 transition">
+                            View P2P
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </section>
+
     <main class="container mx-auto flex-grow p-4">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}

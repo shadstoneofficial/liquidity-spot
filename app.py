@@ -1,4 +1,4 @@
-from flask import Flask, request, session
+from flask import Flask, request, session, url_for
 from config import config
 from models import db
 from datetime import datetime
@@ -38,22 +38,47 @@ def create_app(config_name='default'):
             return {
                 'nav_notification_count': 0,
                 'nav_notifications': [],
-                'current_user': None
+                'current_user': None,
+                'hellobar_items': [],
+                'hellobar_count': 0,
+                'hellobar_primary': None,
             }
 
-        from models import User, P2PTrade, P2PTradeParticipantState
+        from models import User, Order, Swap, P2PTrade, P2PTradeParticipantState
 
         user_id = session['user_id']
         current_user = User.query.get(user_id)
+        if not current_user:
+            return {
+                'nav_notification_count': 0,
+                'nav_notifications': [],
+                'current_user': None,
+                'hellobar_items': [],
+                'hellobar_count': 0,
+                'hellobar_primary': None,
+            }
         trades = P2PTrade.query.filter(
             (P2PTrade.creator_id == user_id) | (P2PTrade.counterparty_id == user_id)
         ).order_by(P2PTrade.updated_at.desc()).all()
+        swaps = Swap.query.join(Order).filter(
+            (Order.user_id == user_id) | (Swap.matcher_id == user_id)
+        ).order_by(Swap.updated_at.desc()).all()
 
         states = P2PTradeParticipantState.query.filter_by(user_id=user_id).all()
         state_by_trade_id = {state.trade_id: state for state in states}
 
         notifications = []
+        hellobar_items = []
         fallback_seen = datetime.min
+        final_trade_statuses = {'completed', 'canceled', 'disputed', 'no_show'}
+        final_swap_statuses = {'completed', 'refunded', 'canceled', 'disputed'}
+        swap_step_labels = {
+            'pending_secret': ('Alice', 'generate secret hash'),
+            'initiated': ('Alice', 'post HNS lock'),
+            'alice_locked': ('Bob', 'verify HNS and post BTC lock'),
+            'bob_locked': ('Alice', 'verify BTC and claim BTC'),
+            'alice_claimed': ('Bob', 'claim HNS'),
+        }
 
         for trade in trades:
             state = state_by_trade_id.get(trade.id)
@@ -77,10 +102,47 @@ def create_app(config_name='default'):
                     'milestone': trade.milestone
                 })
 
+            if trade.status not in final_trade_statuses:
+                if trade.offer.side == 'sell':
+                    current_role = 'Alice' if trade.creator_id == user_id else 'Bob'
+                else:
+                    current_role = 'Bob' if trade.creator_id == user_id else 'Alice'
+                hellobar_items.append({
+                    'kind': 'P2P',
+                    'label': f'P2P Trade #{trade.id}',
+                    'detail': f'{trade.status} / {trade.milestone} | You are {current_role}',
+                    'href': url_for('main.p2p_trade_room', trade_id=trade.id),
+                    'priority': 1,
+                })
+
+        for swap in swaps:
+            if swap.status in final_swap_statuses:
+                continue
+
+            alice_id = swap.role_alice_user_id
+            bob_id = swap.matcher_id if swap.order.user_id == alice_id else swap.order.user_id
+            step_role, step_action = swap_step_labels.get(swap.status, ('Next party', 'continue swap'))
+            next_actor_id = alice_id if step_role == 'Alice' else bob_id if step_role == 'Bob' else None
+            user_is_next = next_actor_id == user_id
+            user_role = 'Alice' if alice_id == user_id else 'Bob'
+            hellobar_items.append({
+                'kind': 'Atomic',
+                'label': f'Atomic Swap #{swap.id}',
+                'detail': f'{step_role} must {step_action} | You are {user_role}',
+                'href': url_for('main.swap_details', id=swap.id),
+                'priority': 0 if user_is_next else 2,
+                'user_is_next': user_is_next,
+            })
+
+        hellobar_items.sort(key=lambda item: item['priority'])
+
         return {
             'current_user': current_user,
             'nav_notification_count': len(notifications),
-            'nav_notifications': notifications[:5]
+            'nav_notifications': notifications[:5],
+            'hellobar_items': hellobar_items[:3],
+            'hellobar_count': len(hellobar_items),
+            'hellobar_primary': hellobar_items[0] if hellobar_items else None,
         }
 
     return app
