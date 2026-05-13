@@ -10,6 +10,32 @@ app = create_app(os.getenv('FLASK_ENV', 'default'))
 if not app.config:
     print("WARNING: App config is empty!", flush=True)
 
+def ensure_user_schema():
+    """Lightweight schema patching for account preferences and reputation."""
+    inspector = inspect(db.engine)
+
+    if 'users' not in inspector.get_table_names():
+        return
+
+    existing_columns = {col['name'] for col in inspector.get_columns('users')}
+    required_columns = {
+        'stale_cancellations': "INTEGER DEFAULT 0",
+        'stale_no_shows': "INTEGER DEFAULT 0",
+        'disputed_swaps': "INTEGER DEFAULT 0",
+        'notify_email': "BOOLEAN DEFAULT FALSE",
+        'notify_telegram': "BOOLEAN DEFAULT FALSE",
+        'notify_wallet': "BOOLEAN DEFAULT TRUE",
+        'telegram_handle': "VARCHAR(80)",
+    }
+
+    with db.engine.begin() as connection:
+        for column_name, column_type in required_columns.items():
+            if column_name not in existing_columns:
+                print(f"Adding missing column users.{column_name}...", flush=True)
+                connection.execute(
+                    text(f"ALTER TABLE users ADD COLUMN {column_name} {column_type}")
+                )
+
 def ensure_p2p_schema():
     """Lightweight schema patching for environments without migrations."""
     inspector = inspect(db.engine)
@@ -69,6 +95,10 @@ def ensure_atomic_swap_schema():
         'hns_lock_value': "INTEGER",
         'hns_lock_output_index': "INTEGER",
         'latest_note': "TEXT",
+        'admin_review_status': "VARCHAR(20) DEFAULT 'unreviewed'",
+        'admin_resolution': "VARCHAR(30)",
+        'admin_notes': "TEXT",
+        'last_reminder_at': "TIMESTAMP",
         'updated_at': "TIMESTAMP",
         'completed_at': "TIMESTAMP",
     }
@@ -106,6 +136,7 @@ try:
     with app.app_context():
         print("Creating/Verifying database tables...", flush=True)
         db.create_all()
+        ensure_user_schema()
         ensure_p2p_schema()
         ensure_atomic_swap_schema()
         ensure_numeric_precision()

@@ -11,6 +11,13 @@ class User(db.Model):
     tier = db.Column(db.String(20))                           # free / paid / team
     gems_balance = db.Column(db.Integer, default=0)
     completed_swaps = db.Column(db.Integer, default=0)       # reputation counter
+    stale_cancellations = db.Column(db.Integer, default=0)
+    stale_no_shows = db.Column(db.Integer, default=0)
+    disputed_swaps = db.Column(db.Integer, default=0)
+    notify_email = db.Column(db.Boolean, default=False)
+    notify_telegram = db.Column(db.Boolean, default=False)
+    notify_wallet = db.Column(db.Boolean, default=True)
+    telegram_handle = db.Column(db.String(80))
     last_sync = db.Column(db.DateTime, default=datetime.utcnow)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -58,6 +65,10 @@ class Swap(db.Model):
     hns_lock_value = db.Column(db.Integer)
     hns_lock_output_index = db.Column(db.Integer)
     latest_note = db.Column(db.Text)
+    admin_review_status = db.Column(db.String(20), default='unreviewed')
+    admin_resolution = db.Column(db.String(30))
+    admin_notes = db.Column(db.Text)
+    last_reminder_at = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     completed_at = db.Column(db.DateTime)

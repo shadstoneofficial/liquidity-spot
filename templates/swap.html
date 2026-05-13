@@ -60,12 +60,17 @@
                 <div>
                     <p class="text-xs uppercase tracking-wide text-red-200">Action Required</p>
                     <h2 class="text-2xl font-bold text-white mt-1">{{ next_step.title }}</h2>
-                    <p class="text-sm text-red-100 mt-2">
-                        Next actor: <strong>{{ next_step.role }}</strong>
-                        {% if next_step.user_id == user.id %}
-                            <span class="font-bold">(you)</span>
-                        {% endif %}
-                    </p>
+                    <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-red-100">
+                        <p class="rounded border border-red-400/30 bg-black/20 px-3 py-2">
+                            Next action: <strong>{{ next_step.role }} ({{ next_actor_user.username if next_actor_user else 'Unknown user' }})</strong>
+                            {% if next_step.user_id == user.id %}
+                                <span class="font-bold text-white">Your turn</span>
+                            {% endif %}
+                        </p>
+                        <p class="rounded border border-red-400/30 bg-black/20 px-3 py-2">
+                            You are: <strong>{{ current_swap_role }} ({{ user.username }})</strong>
+                        </p>
+                    </div>
                     <ol class="list-decimal list-inside space-y-1 text-sm text-red-100 mt-3">
                         {% for instruction in next_step.instructions %}
                             <li>{{ instruction }}</li>
@@ -75,6 +80,10 @@
                 <div class="rounded border border-red-400/40 bg-black/30 p-4 text-sm min-w-[240px]">
                     <p class="text-red-200">Current step pending for</p>
                     <p class="text-2xl font-bold text-white" data-countup-since="{{ pending_since.isoformat() }}Z">Calculating...</p>
+                    <p class="text-red-100 mt-2">
+                        Reminder unlock:
+                        <span data-countdown-to="{{ reminder_at.isoformat() }}Z">Calculating...</span>
+                    </p>
                     <p class="text-red-100 mt-2">
                         Stale action unlock:
                         <span data-countdown-to="{{ timeout_at.isoformat() }}Z">Calculating...</span>
@@ -102,6 +111,18 @@
                         Request Review
                     </button>
                 </form>
+            {% endif %}
+
+            {% if can_send_reminder %}
+                <form method="POST" action="{{ url_for('main.send_swap_reminder', id=swap.id) }}" class="mt-4" onsubmit="return confirm('Post a reminder to the swap room for the counterparty?')">
+                    <button type="submit" class="bg-yellow-500 text-black font-bold py-2 px-5 rounded hover:bg-yellow-300 transition">
+                        Send Reminder
+                    </button>
+                </form>
+            {% elif next_step and next_step.user_id != user.id and swap.status not in ['completed', 'refunded', 'canceled', 'disputed'] %}
+                <p class="mt-4 text-sm text-red-100">
+                    Reminder button unlocks after {{ reminder_hours }} hours without progress.
+                </p>
             {% endif %}
         </div>
     {% endif %}
@@ -153,10 +174,10 @@
             <div>
                 <h2 class="text-xl font-bold text-white mb-3">Your Role</h2>
                 {% if is_alice %}
-                    <p class="text-green-300 font-bold">You are Alice, the HNS seller.</p>
+                    <p class="text-green-300 font-bold">You are Alice ({{ user.username }}), the HNS seller.</p>
                     <p class="text-gfa-grey text-sm mt-1">You lock HNS first, then claim BTC with the secret.</p>
                 {% else %}
-                    <p class="text-blue-300 font-bold">You are Bob, the HNS buyer.</p>
+                    <p class="text-blue-300 font-bold">You are Bob ({{ user.username }}), the HNS buyer.</p>
                     <p class="text-gfa-grey text-sm mt-1">You verify Alice's HNS lock, lock BTC, then claim HNS after the secret is revealed.</p>
                 {% endif %}
             </div>

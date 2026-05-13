@@ -3,7 +3,7 @@
 {% block title %}Admin | Liquidity.spot{% endblock %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto bg-black/30 p-8 rounded-lg">
+<div class="max-w-6xl mx-auto bg-black/30 p-8 rounded-lg">
     <h1 class="text-3xl font-bold mb-6 text-gfa-light">Admin Panel</h1>
     
     <div class="bg-black/50 p-6 rounded-lg mb-8">
@@ -23,6 +23,77 @@
             </div>
             <button type="submit" class="w-full bg-gfa-light text-gfa-dark font-bold py-2 rounded hover:bg-white transition">Credit Gems</button>
         </form>
+    </div>
+
+    <div class="bg-black/50 p-6 rounded-lg mb-8">
+        <h2 class="text-xl font-bold mb-4 text-white">Disputed Atomic Swaps</h2>
+        {% if flagged_swaps %}
+            <div class="space-y-6">
+                {% for swap in flagged_swaps %}
+                    {% set alice = swap.order.user if swap.order.user_id == swap.role_alice_user_id else swap.matcher %}
+                    {% set bob = swap.matcher if swap.matcher_id != swap.role_alice_user_id else swap.order.user %}
+                    <div class="border border-red-500/30 rounded p-4">
+                        <div class="flex flex-col md:flex-row md:justify-between gap-2 mb-3">
+                            <div>
+                                <p class="text-white font-bold">Swap #{{ swap.id }} / Order #{{ swap.order_id }}</p>
+                                <p class="text-gfa-grey text-sm">
+                                    Alice: {{ alice.username if alice else 'Unknown' }} |
+                                    Bob: {{ bob.username if bob else 'Unknown' }} |
+                                    status: {{ swap.status }}
+                                </p>
+                            </div>
+                            <a href="{{ url_for('main.swap_details', id=swap.id) }}" class="text-gfa-light hover:text-white text-sm">Open swap room</a>
+                        </div>
+                        <p class="text-gfa-grey text-sm mb-3"><strong class="text-white">Latest Note:</strong> {{ swap.latest_note or 'None' }}</p>
+                        <form method="POST" action="{{ url_for('admin.resolve_swap', swap_id=swap.id) }}" class="space-y-3">
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                                <div>
+                                    <label class="block text-gfa-grey mb-1">Review Status</label>
+                                    <select name="admin_review_status" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white">
+                                        {% for option in ['unreviewed', 'in_review', 'resolved'] %}
+                                            <option value="{{ option }}" {{ 'selected' if swap.admin_review_status == option else '' }}>{{ option }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-gfa-grey mb-1">Resolution</label>
+                                    <select name="admin_resolution" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white">
+                                        {% for option in ['', 'completed', 'canceled', 'disputed', 'no_show', 'refunded'] %}
+                                            <option value="{{ option }}" {{ 'selected' if swap.admin_resolution == option else '' }}>{{ option or 'None' }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-gfa-grey mb-1">Swap Status</label>
+                                    <select name="status" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white">
+                                        {% for option in ['initiated', 'alice_locked', 'bob_locked', 'alice_claimed', 'completed', 'canceled', 'refunded', 'disputed'] %}
+                                            <option value="{{ option }}" {{ 'selected' if swap.status == option else '' }}>{{ option }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-gfa-grey mb-1">Reputation</label>
+                                    <select name="reputation_action" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white">
+                                        <option value="none">No change</option>
+                                        <option value="alice_no_show">Mark Alice no-show</option>
+                                        <option value="bob_no_show">Mark Bob no-show</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-gfa-grey mb-1">Admin Notes</label>
+                                <textarea name="admin_notes" rows="3" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white">{{ swap.admin_notes or '' }}</textarea>
+                            </div>
+                            <button type="submit" class="bg-gfa-light text-gfa-dark font-bold px-4 py-2 rounded hover:bg-white transition">
+                                Save Swap Review
+                            </button>
+                        </form>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-gfa-grey">No disputed atomic swaps right now.</p>
+        {% endif %}
     </div>
 
     <div class="bg-black/50 p-6 rounded-lg mb-8">
@@ -133,6 +204,42 @@
             </div>
         {% else %}
             <p class="text-gfa-grey">No P2P trades yet.</p>
+        {% endif %}
+    </div>
+
+    <div class="bg-black/50 p-6 rounded-lg mt-8">
+        <h2 class="text-xl font-bold mb-4 text-white">Recent Atomic Swaps</h2>
+        {% if recent_swaps %}
+            <div class="overflow-x-auto">
+                <table class="w-full text-left min-w-[760px]">
+                    <thead>
+                        <tr class="border-b border-gfa-grey/30">
+                            <th class="p-2 whitespace-nowrap">Swap</th>
+                            <th class="p-2 whitespace-nowrap">Participants</th>
+                            <th class="p-2 whitespace-nowrap">Status</th>
+                            <th class="p-2 whitespace-nowrap">Review</th>
+                            <th class="p-2 whitespace-nowrap">Updated</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for swap in recent_swaps %}
+                            {% set alice = swap.order.user if swap.order.user_id == swap.role_alice_user_id else swap.matcher %}
+                            {% set bob = swap.matcher if swap.matcher_id != swap.role_alice_user_id else swap.order.user %}
+                            <tr class="border-b border-gfa-grey/10">
+                                <td class="p-2 whitespace-nowrap">
+                                    <a href="{{ url_for('main.swap_details', id=swap.id) }}" class="text-gfa-light hover:text-white">#{{ swap.id }}</a>
+                                </td>
+                                <td class="p-2 whitespace-nowrap">{{ alice.username if alice else 'Unknown' }} / {{ bob.username if bob else 'Unknown' }}</td>
+                                <td class="p-2 whitespace-nowrap">{{ swap.status }}</td>
+                                <td class="p-2 whitespace-nowrap">{{ swap.admin_review_status }}</td>
+                                <td class="p-2 whitespace-nowrap">{{ swap.updated_at.strftime('%Y-%m-%d %H:%M') if swap.updated_at else 'Unknown' }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="text-gfa-grey">No atomic swaps yet.</p>
         {% endif %}
     </div>
 </div>

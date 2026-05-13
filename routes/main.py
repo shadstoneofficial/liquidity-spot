@@ -8,6 +8,7 @@ import requests
 import re
 from decimal import Decimal, InvalidOperation
 from datetime import datetime, timedelta
+from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from services.gems_service import (
     GemsServiceError,
@@ -20,6 +21,8 @@ from services.swap_adapters import build_swap_intents
 
 main_bp = Blueprint('main', __name__)
 SWAP_STALE_CANCEL_HOURS = 24
+SWAP_REMINDER_HOURS = 18
+SWAP_REMINDER_REPEAT_HOURS = 6
 
 
 def _is_gfavip_session():
@@ -216,6 +219,24 @@ def _complete_swap_reputation(swap):
         user = User.query.get(user_id)
         if user:
             user.completed_swaps = (user.completed_swaps or 0) + 1
+
+
+def _swap_role_label(swap, user_id):
+    if user_id == _swap_alice_id(swap):
+        return 'Alice'
+    if user_id == _swap_bob_id(swap):
+        return 'Bob'
+    return 'Participant'
+
+
+def _swap_user_label(user):
+    return user.username if user else 'Unknown user'
+
+
+def _increment_swap_reputation(user_id, field_name):
+    user = User.query.get(user_id)
+    if user and hasattr(user, field_name):
+        setattr(user, field_name, (getattr(user, field_name) or 0) + 1)
 
 
 def _external_scheme():
@@ -845,6 +866,26 @@ def profile():
         p2p_trade_count=p2p_trade_count,
         order_count=order_count
     )
+
+
+@main_bp.route('/profile/notifications', methods=['POST'])
+@login_required
+def update_notification_preferences():
+    user = User.query.get_or_404(session['user_id'])
+    user.notify_email = bool(request.form.get('notify_email'))
+    user.notify_telegram = bool(request.form.get('notify_telegram'))
+    user.notify_wallet = bool(request.form.get('notify_wallet'))
+    user.telegram_handle = (request.form.get('telegram_handle') or '').strip()[:80] or None
+
+    try:
+        db.session.commit()
+        flash('Notification preferences saved.', 'success')
+    except SQLAlchemyError:
+        db.session.rollback()
+        current_app.logger.exception('Error updating notification preferences')
+        flash('Could not save notification preferences.', 'error')
+
+    return redirect(url_for('main.profile'))
 
 
 @main_bp.route('/activity')
@@ -1482,6 +1523,60 @@ def add_swap_message(id):
     return redirect(url_for('main.swap_details', id=swap.id))
 
 
+@main_bp.route('/swaps/<int:id>/send-reminder', methods=['POST'])
+@login_required
+def send_swap_reminder(id):
+    swap = Swap.query.get_or_404(id)
+    user_id = session['user_id']
+
+    if user_id not in _swap_participants(swap):
+        flash('You do not have permission to send reminders for this swap.', 'error')
+        return redirect(url_for('main.dashboard'))
+
+    next_step = _swap_next_step(swap)
+    if not next_step or swap.status in ['completed', 'refunded', 'canceled', 'disputed']:
+        flash('This swap does not need a reminder right now.', 'error')
+        return redirect(url_for('main.swap_details', id=swap.id))
+
+    if user_id == next_step['user_id']:
+        flash('You are the next actor. Post an update or complete the step instead of reminding yourself.', 'error')
+        return redirect(url_for('main.swap_details', id=swap.id))
+
+    now = datetime.utcnow()
+    pending_since = swap.updated_at or swap.created_at or now
+    reminder_at = pending_since + timedelta(hours=SWAP_REMINDER_HOURS)
+    reminder_repeat_at = (swap.last_reminder_at or datetime.min) + timedelta(hours=SWAP_REMINDER_REPEAT_HOURS)
+
+    if now < reminder_at:
+        flash(f'Reminders unlock after {SWAP_REMINDER_HOURS} hours with no step progress.', 'error')
+        return redirect(url_for('main.swap_details', id=swap.id))
+
+    if swap.last_reminder_at and now < reminder_repeat_at:
+        flash(f'Another reminder can be sent after {SWAP_REMINDER_REPEAT_HOURS} hours.', 'error')
+        return redirect(url_for('main.swap_details', id=swap.id))
+
+    actor = User.query.get(next_step['user_id'])
+    sender_role = _swap_role_label(swap, user_id)
+    actor_label = f"{next_step['role']} ({_swap_user_label(actor)})"
+    message = (
+        f'Reminder from {sender_role}: {actor_label} is next for swap #{swap.id}. '
+        f'Please complete the step or leave a status note.'
+    )
+    swap.last_reminder_at = now
+    swap.latest_note = message
+    db.session.add(SwapMessage(swap_id=swap.id, user_id=user_id, message=message))
+
+    try:
+        db.session.commit()
+        flash('Reminder posted in the swap room.', 'success')
+    except SQLAlchemyError:
+        db.session.rollback()
+        current_app.logger.exception('Error sending atomic swap reminder')
+        flash('Could not send reminder. Please try again.', 'error')
+
+    return redirect(url_for('main.swap_details', id=swap.id))
+
+
 @main_bp.route('/swaps/<int:id>/timeout-cancel', methods=['POST'])
 @login_required
 def timeout_cancel_swap(id):
@@ -1513,6 +1608,8 @@ def timeout_cancel_swap(id):
         flash(f'Timeout cancel unlocks after {SWAP_STALE_CANCEL_HOURS} hours with no step progress.', 'error')
         return redirect(url_for('main.swap_details', id=swap.id))
 
+    _increment_swap_reputation(next_step['user_id'], 'stale_cancellations')
+    _increment_swap_reputation(next_step['user_id'], 'stale_no_shows')
     swap.status = 'canceled'
     swap.latest_note = f'Swap canceled after {SWAP_STALE_CANCEL_HOURS} hours without the required next step.'
     swap.completed_at = datetime.utcnow()
@@ -1558,7 +1655,10 @@ def request_swap_review(id):
         flash(f'Review request unlocks after {SWAP_STALE_CANCEL_HOURS} hours with no step progress.', 'error')
         return redirect(url_for('main.swap_details', id=swap.id))
 
+    _increment_swap_reputation(next_step['user_id'], 'disputed_swaps')
     swap.status = 'disputed'
+    swap.admin_review_status = 'in_review'
+    swap.admin_resolution = 'disputed'
     swap.latest_note = 'Review requested after the post-lock step timed out.'
     db.session.add(SwapMessage(
         swap_id=swap.id,
@@ -1657,26 +1757,46 @@ def swap_details(id):
     bob_user = User.query.get(_swap_bob_id(swap))
     alice_user = User.query.get(_swap_alice_id(swap))
     next_step = _swap_next_step(swap)
+    next_actor_user = User.query.get(next_step['user_id']) if next_step else None
+    current_swap_role = _swap_role_label(swap, user.id)
     pending_since = swap.updated_at or swap.created_at or datetime.utcnow()
     timeout_at = pending_since + timedelta(hours=SWAP_STALE_CANCEL_HOURS)
+    reminder_at = pending_since + timedelta(hours=SWAP_REMINDER_HOURS)
+    reminder_repeat_at = (swap.last_reminder_at or datetime.min) + timedelta(hours=SWAP_REMINDER_REPEAT_HOURS)
+    now = datetime.utcnow()
     funds_recorded = bool(swap.alice_lock_txid or swap.bob_lock_txid or swap.alice_claim_txid or swap.bob_claim_txid)
     can_timeout_cancel = (
         next_step
         and not funds_recorded
         and swap.status in ['pending_secret', 'initiated']
         and user.id != next_step['user_id']
-        and datetime.utcnow() >= timeout_at
+        and now >= timeout_at
     )
     can_request_review = (
         next_step
         and funds_recorded
         and swap.status not in ['completed', 'refunded', 'canceled', 'disputed']
         and user.id != next_step['user_id']
-        and datetime.utcnow() >= timeout_at
+        and now >= timeout_at
+    )
+    can_send_reminder = (
+        next_step
+        and swap.status not in ['completed', 'refunded', 'canceled', 'disputed']
+        and user.id != next_step['user_id']
+        and now >= reminder_at
+        and (not swap.last_reminder_at or now >= reminder_repeat_at)
     )
     default_relist_side = 'sell' if is_alice else 'buy'
-    adapter_token = _ensure_adapter_token(swap)
-    db.session.commit()
+    if not swap.adapter_token:
+        adapter_token = secrets.token_hex(32)
+        db.session.execute(
+            text("UPDATE swaps SET adapter_token = :adapter_token, updated_at = :updated_at WHERE id = :swap_id"),
+            {'adapter_token': adapter_token, 'updated_at': swap.updated_at, 'swap_id': swap.id}
+        )
+        db.session.commit()
+        db.session.refresh(swap)
+    else:
+        adapter_token = swap.adapter_token
     wallet_intents_url = _external_url_for(
         'main.api_wallet_swap_intents',
         id=swap.id,
@@ -1706,11 +1826,16 @@ def swap_details(id):
         wallet_intents_url=wallet_intents_url,
         bob_deeplink_url=bob_deeplink_url,
         next_step=next_step,
+        next_actor_user=next_actor_user,
+        current_swap_role=current_swap_role,
         pending_since=pending_since,
         timeout_at=timeout_at,
+        reminder_at=reminder_at,
         stale_cancel_hours=SWAP_STALE_CANCEL_HOURS,
+        reminder_hours=SWAP_REMINDER_HOURS,
         can_timeout_cancel=can_timeout_cancel,
         can_request_review=can_request_review,
+        can_send_reminder=can_send_reminder,
         funds_recorded=funds_recorded,
         default_relist_side=default_relist_side,
     )

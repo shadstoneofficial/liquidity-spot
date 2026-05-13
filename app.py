@@ -1,7 +1,7 @@
 from flask import Flask, request, session, url_for
 from config import config
 from models import db
-from datetime import datetime
+from datetime import datetime, timedelta
 
 def create_app(config_name='default'):
     app = Flask(__name__)
@@ -123,12 +123,16 @@ def create_app(config_name='default'):
             bob_id = swap.matcher_id if swap.order.user_id == alice_id else swap.order.user_id
             step_role, step_action = swap_step_labels.get(swap.status, ('Next party', 'continue swap'))
             next_actor_id = alice_id if step_role == 'Alice' else bob_id if step_role == 'Bob' else None
+            next_actor = User.query.get(next_actor_id) if next_actor_id else None
             user_is_next = next_actor_id == user_id
             user_role = 'Alice' if alice_id == user_id else 'Bob'
+            pending_since = swap.updated_at or swap.created_at or datetime.utcnow()
+            reminder_due = datetime.utcnow() >= pending_since + timedelta(hours=18)
+            action_prefix = 'Reminder due' if reminder_due and not user_is_next else 'Next action'
             hellobar_items.append({
                 'kind': 'Atomic',
                 'label': f'Atomic Swap #{swap.id}',
-                'detail': f'{step_role} must {step_action} | You are {user_role}',
+                'detail': f'{action_prefix}: {step_role} ({next_actor.username if next_actor else "Unknown"}) must {step_action} | You are {user_role} ({current_user.username})',
                 'href': url_for('main.swap_details', id=swap.id),
                 'priority': 0 if user_is_next else 2,
                 'user_is_next': user_is_next,
