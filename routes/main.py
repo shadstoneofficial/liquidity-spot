@@ -1507,6 +1507,17 @@ def add_swap_message(id):
         flash('Message cannot be empty.', 'error')
         return redirect(url_for('main.swap_details', id=swap.id))
 
+    duplicate_window = datetime.utcnow() - timedelta(seconds=15)
+    recent_duplicate = SwapMessage.query.filter(
+        SwapMessage.swap_id == swap.id,
+        SwapMessage.user_id == user_id,
+        SwapMessage.message == message,
+        SwapMessage.created_at >= duplicate_window
+    ).first()
+    if recent_duplicate:
+        flash('Looks like that swap note was already posted.', 'info')
+        return redirect(url_for('main.swap_details', id=swap.id))
+
     db.session.add(SwapMessage(
         swap_id=swap.id,
         user_id=user_id,

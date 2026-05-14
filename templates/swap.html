@@ -161,7 +161,7 @@
             {% endif %}
         </div>
 
-        <form method="POST" action="{{ url_for('main.add_swap_message', id=swap.id) }}" class="mt-4 space-y-3">
+        <form method="POST" action="{{ url_for('main.add_swap_message', id=swap.id) }}" class="mt-4 space-y-3 js-disable-on-submit">
             <textarea name="message" rows="4" required class="w-full bg-black/50 border border-gfa-grey/30 rounded p-3 text-white" placeholder="Ask for status, share a TXID/explorer link, or record what you are waiting on."></textarea>
             <button type="submit" class="bg-gfa-blue text-white font-bold px-4 py-2 rounded hover:bg-blue-600 transition">
                 Post Swap Note
@@ -522,5 +522,17 @@
 
     updateSwapTimers();
     setInterval(updateSwapTimers, 1000);
+
+    document.querySelectorAll('.js-disable-on-submit').forEach((form) => {
+        form.addEventListener('submit', () => {
+            const button = form.querySelector('button[type="submit"]');
+            if (button) {
+                button.disabled = true;
+                button.dataset.originalText = button.textContent;
+                button.textContent = 'Posting...';
+                button.classList.add('opacity-60', 'cursor-not-allowed');
+            }
+        });
+    });
 </script>
 {% endblock %}
