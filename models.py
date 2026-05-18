@@ -8,6 +8,7 @@ class User(db.Model):
     id = db.Column(db.String(36), primary_key=True)          # UUID str from GFAVIP user_id
     username = db.Column(db.String(80), unique=True)
     email = db.Column(db.String(120), unique=True)
+    guest_recovery_digest = db.Column(db.String(64), unique=True)
     tier = db.Column(db.String(20))                           # free / paid / team
     gems_balance = db.Column(db.Integer, default=0)
     completed_swaps = db.Column(db.Integer, default=0)       # reputation counter

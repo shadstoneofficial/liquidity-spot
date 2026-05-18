@@ -22,6 +22,7 @@ def ensure_user_schema():
         'stale_cancellations': "INTEGER DEFAULT 0",
         'stale_no_shows': "INTEGER DEFAULT 0",
         'disputed_swaps': "INTEGER DEFAULT 0",
+        'guest_recovery_digest': "VARCHAR(64)",
         'notify_email': "BOOLEAN DEFAULT FALSE",
         'notify_telegram': "BOOLEAN DEFAULT FALSE",
         'notify_wallet': "BOOLEAN DEFAULT TRUE",

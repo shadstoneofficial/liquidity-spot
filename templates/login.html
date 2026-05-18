@@ -8,12 +8,12 @@
         <div class="inline-flex items-center gap-2 bg-gfa-light/20 text-gfa-light text-sm font-bold px-3 py-1 rounded-full mb-4">
             Login
         </div>
-        <h1 class="text-4xl font-bold text-gfa-light mb-4">Login With GFAVIP</h1>
+        <h1 class="text-4xl font-bold text-gfa-light mb-4">Login Or Recover Guest</h1>
         <p class="text-lg text-white mb-3">
-            GFAVIP login unlocks account features on `Liquidity.spot`.
+            GFAVIP login unlocks account features on `Liquidity.spot`; guest recovery keeps an anonymous P2P identity.
         </p>
         <p class="text-gfa-grey max-w-3xl">
-            You can browse public P2P offers, create offers, accept offers, and enter trade rooms without logging in. GFAVIP is optional and adds account-linked benefits like Gems, saved activity, and reputation.
+            You can browse public P2P offers, create offers, accept offers, and enter trade rooms without logging in. Save your guest recovery key if you want to return later as the same anonymous guest.
         </p>
     </div>
 
@@ -41,9 +41,36 @@
         </div>
     </div>
 
+    <div class="bg-black/30 p-6 rounded-lg border border-gfa-grey/20">
+        <h2 class="text-2xl font-bold text-white mb-3">Recover Anonymous Guest</h2>
+        <p class="text-gfa-grey mb-4">
+            Paste your guest recovery key to continue with the same guest name, trade rooms, and reputation history. The key is not connected to GFAVIP.
+        </p>
+        <form method="POST" action="{{ url_for('auth.guest_recovery') }}" class="grid gap-3 md:grid-cols-[1fr_auto]">
+            <input
+                type="text"
+                name="guest_recovery_token"
+                autocomplete="off"
+                spellcheck="false"
+                placeholder="ls-guest-0000-0000-0000-0000-0000-0000-0000-0000"
+                class="w-full rounded border border-gfa-grey/30 bg-black/50 px-3 py-3 font-mono text-sm text-white placeholder:text-gfa-grey/60 focus:border-gfa-light focus:outline-none"
+                required
+            >
+            <button type="submit" class="rounded bg-gfa-light px-5 py-3 font-bold text-gfa-dark hover:bg-white transition">
+                Recover Guest
+            </button>
+        </form>
+        {% if session.get('auth_method') == 'guest' %}
+            <p class="mt-4 text-sm text-gfa-grey">
+                Current guest: <span class="text-white">{{ session.get('username') }}</span>.
+                <a href="{{ url_for('auth.guest_recovery') }}" class="text-gfa-light hover:text-white">Show recovery key</a>
+            </p>
+        {% endif %}
+    </div>
+
     <div class="bg-blue-900/20 border border-blue-500/30 rounded-lg p-6 text-blue-100">
         <p>
-            <strong>Note:</strong> GFAVIP is optional for normal P2P use. It is only required when you choose features that depend on your GFAVIP account, such as Gems or account-linked history.
+            <strong>Note:</strong> GFAVIP is optional for normal P2P use. Guest recovery is the anonymous path for account history; GFAVIP is only needed for Gems or real account-linked benefits.
         </p>
     </div>
 </div>

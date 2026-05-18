@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app, Response, jsonify
 from models import db, User, Order, Swap, SwapMessage, P2POffer, P2PTrade, P2PTradeMessage, P2PTradeParticipantState
 import os
-from routes.auth import login_required
+from routes.auth import attach_guest_recovery_token, login_required
 import secrets
 import hashlib
 import requests
@@ -40,6 +40,7 @@ def _ensure_session_user():
         username = f"Guest {secrets.token_hex(3)}"
         if not User.query.get(user_id) and not User.query.filter_by(username=username).first():
             user = User(id=user_id, username=username, tier='guest')
+            attach_guest_recovery_token(user)
             db.session.add(user)
             try:
                 db.session.commit()
@@ -392,6 +393,173 @@ def _refund_maker_bond(trade, reason, resolution='refunded'):
     trade.maker_bond_error = None
     return True, None
 
+
+def _p2p_trade_parties(trade):
+    if trade.offer.side == 'sell':
+        alice_user = trade.creator
+        bob_user = trade.counterparty
+    else:
+        alice_user = trade.counterparty
+        bob_user = trade.creator
+    return alice_user, bob_user
+
+
+def _build_p2p_trade_receipt_text(trade, requested_by=None):
+    alice_user, bob_user = _p2p_trade_parties(trade)
+    requested_at = datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')
+    created_at = trade.created_at.strftime('%Y-%m-%d %H:%M UTC') if trade.created_at else 'Unknown'
+    updated_at = trade.updated_at.strftime('%Y-%m-%d %H:%M UTC') if trade.updated_at else 'Unknown'
+    total_btc = Decimal(trade.offer.amount_hns) * Decimal(trade.offer.price_btc_per_hns)
+
+    lines = [
+        'Liquidity.spot P2P Trade Receipt',
+        '=' * 36,
+        f'Trade ID: #{trade.id}',
+        f'Offer ID: #{trade.offer_id}',
+        f'Generated: {requested_at}',
+        f'Requested by: {requested_by.username if requested_by else "Unknown"}',
+        '',
+        'Parties',
+        '-' * 36,
+        f'Alice (HNS seller): {alice_user.username}',
+        f'Bob (HNS buyer / BTC seller): {bob_user.username}',
+        f'Offer creator: {trade.creator.username}',
+        f'Counterparty: {trade.counterparty.username}',
+        '',
+        'Trade Terms',
+        '-' * 36,
+        f'Side: {trade.offer.side.upper()} HNS',
+        f'Amount: {trade.offer.amount_hns} HNS',
+        f'Price: {trade.offer.price_btc_per_hns} BTC/HNS',
+        f'Total BTC: {total_btc:.12f}',
+        f'Payment method: {trade.offer.payment_method}',
+        f'Gems bond: {trade.maker_bond_amount or 0}',
+        f'Maker bond status: {trade.maker_bond_status}',
+        '',
+        'Current State',
+        '-' * 36,
+        f'Status: {trade.status}',
+        f'Milestone: {trade.milestone}',
+        f'Latest note: {trade.latest_note or "None"}',
+        f'Created: {created_at}',
+        f'Updated: {updated_at}',
+        f'Admin review: {trade.admin_review_status}',
+        f'Admin resolution: {trade.admin_resolution or "Pending"}',
+    ]
+
+    if trade.admin_notes:
+        lines.append(f'Admin notes: {trade.admin_notes}')
+
+    lines.extend([
+        '',
+        'Transaction Records',
+        '-' * 36,
+        f'Alice lock TXID: {trade.alice_lock_txid or "Not submitted"}',
+        f'Bob lock TXID: {trade.bob_lock_txid or "Not submitted"}',
+    ])
+
+    if trade.offer.notes:
+        lines.extend([
+            '',
+            'Offer Notes',
+            '-' * 36,
+            trade.offer.notes,
+        ])
+
+    lines.extend([
+        '',
+        'Message Transcript',
+        '-' * 36,
+    ])
+
+    messages = sorted(trade.messages, key=lambda message: message.created_at)
+    if not messages:
+        lines.append('No messages recorded.')
+    else:
+        for message in messages:
+            when = message.created_at.strftime('%Y-%m-%d %H:%M UTC') if message.created_at else 'Unknown time'
+            lines.append(f'[{when}] {message.user.username}:')
+            lines.append(message.message)
+            lines.append('')
+
+    lines.extend([
+        '',
+        'Record Note',
+        '-' * 36,
+        'This receipt is generated from the Liquidity.spot trade room record. '
+        'Participants remain responsible for verifying counterparties, transaction IDs, confirmations, and settlement.'
+    ])
+
+    return '\n'.join(lines).strip() + '\n'
+
+
+def _pdf_escape(value):
+    safe = ''.join(char if ord(char) < 256 else '?' for char in value)
+    return safe.replace('\\', '\\\\').replace('(', '\\(').replace(')', '\\)')
+
+
+def _build_simple_text_pdf(title, text):
+    max_chars = 92
+    max_lines = 58
+    wrapped_lines = []
+    for raw_line in text.splitlines():
+        line = raw_line.rstrip()
+        if not line:
+            wrapped_lines.append('')
+            continue
+        while len(line) > max_chars:
+            split_at = line.rfind(' ', 0, max_chars)
+            if split_at < 30:
+                split_at = max_chars
+            wrapped_lines.append(line[:split_at])
+            line = line[split_at:].lstrip()
+        wrapped_lines.append(line)
+
+    pages = [wrapped_lines[i:i + max_lines] for i in range(0, len(wrapped_lines), max_lines)] or [[]]
+    objects = [
+        '<< /Type /Catalog /Pages 2 0 R >>',
+        '',
+        '<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>'
+    ]
+    page_refs = []
+
+    for page_lines in pages:
+        content = ['BT', '/F1 9 Tf', '50 770 Td', '12 TL']
+        for line in page_lines:
+            content.append(f'({_pdf_escape(line)}) Tj')
+            content.append('T*')
+        content.append('ET')
+        stream = '\n'.join(content)
+        stream_bytes = stream.encode('latin-1', errors='replace')
+
+        page_object_number = len(objects) + 1
+        content_object_number = page_object_number + 1
+        page_refs.append(f'{page_object_number} 0 R')
+        objects.append(
+            f'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] '
+            f'/Resources << /Font << /F1 3 0 R >> >> /Contents {content_object_number} 0 R >>'
+        )
+        objects.append(f'<< /Length {len(stream_bytes)} >>\nstream\n{stream}\nendstream')
+
+    objects[1] = f'<< /Type /Pages /Kids [{" ".join(page_refs)}] /Count {len(page_refs)} >>'
+
+    pdf = ['%PDF-1.4\n%\xe2\xe3\xcf\xd3\n']
+    offsets = [0]
+    for index, obj in enumerate(objects, start=1):
+        offsets.append(sum(len(part.encode('latin-1', errors='replace')) for part in pdf))
+        pdf.append(f'{index} 0 obj\n{obj}\nendobj\n')
+
+    xref_offset = sum(len(part.encode('latin-1', errors='replace')) for part in pdf)
+    pdf.append(f'xref\n0 {len(objects) + 1}\n')
+    pdf.append('0000000000 65535 f \n')
+    for offset in offsets[1:]:
+        pdf.append(f'{offset:010d} 00000 n \n')
+    pdf.append(
+        f'trailer\n<< /Size {len(objects) + 1} /Root 1 0 R /Title ({_pdf_escape(title)}) >>\n'
+        f'startxref\n{xref_offset}\n%%EOF\n'
+    )
+    return ''.join(pdf).encode('latin-1', errors='replace')
+
 @main_bp.route('/skill.md')
 def skill_md():
     skill_path = os.path.join(current_app.root_path, 'skill.md')
@@ -656,13 +824,7 @@ def p2p_trade_room(trade_id):
         return redirect(url_for('main.p2p'))
 
     is_creator = session['user_id'] == trade.creator_id
-    if trade.offer.side == 'sell':
-        alice_user = trade.creator
-        bob_user = trade.counterparty
-    else:
-        alice_user = trade.counterparty
-        bob_user = trade.creator
-
+    alice_user, bob_user = _p2p_trade_parties(trade)
     current_role = 'Alice' if session['user_id'] == alice_user.id else 'Bob'
 
     participant_state = P2PTradeParticipantState.query.filter_by(
@@ -687,6 +849,39 @@ def p2p_trade_room(trade_id):
         bob_user=bob_user,
         current_role=current_role
     )
+
+
+@main_bp.route('/p2p/trades/<int:trade_id>/receipt.<file_format>')
+@login_required
+def p2p_trade_receipt(trade_id, file_format):
+    trade = P2PTrade.query.get_or_404(trade_id)
+
+    if session['user_id'] not in [trade.creator_id, trade.counterparty_id]:
+        flash('You do not have permission to download this trade receipt.', 'error')
+        return redirect(url_for('main.p2p'))
+
+    requested_by = User.query.get(session['user_id'])
+    receipt_text = _build_p2p_trade_receipt_text(trade, requested_by=requested_by)
+    filename_base = f'liquidity-spot-trade-{trade.id}-receipt'
+
+    if file_format == 'txt':
+        return Response(
+            receipt_text,
+            mimetype='text/plain; charset=utf-8',
+            headers={'Content-Disposition': f'attachment; filename="{filename_base}.txt"'}
+        )
+
+    if file_format == 'pdf':
+        pdf_bytes = _build_simple_text_pdf(f'Liquidity.spot Trade #{trade.id} Receipt', receipt_text)
+        return Response(
+            pdf_bytes,
+            mimetype='application/pdf',
+            headers={'Content-Disposition': f'attachment; filename="{filename_base}.pdf"'}
+        )
+
+    flash('Unsupported receipt format.', 'error')
+    return redirect(url_for('main.p2p_trade_room', trade_id=trade.id))
+
 
 @main_bp.route('/p2p/trades/<int:trade_id>/update', methods=['POST'])
 @login_required

@@ -42,6 +42,7 @@ def create_app(config_name='default'):
                 'hellobar_items': [],
                 'hellobar_count': 0,
                 'hellobar_primary': None,
+                'guest_recovery_notice': None,
             }
 
         from models import User, Order, Swap, P2PTrade, P2PTradeParticipantState
@@ -56,6 +57,7 @@ def create_app(config_name='default'):
                 'hellobar_items': [],
                 'hellobar_count': 0,
                 'hellobar_primary': None,
+                'guest_recovery_notice': None,
             }
         trades = P2PTrade.query.filter(
             (P2PTrade.creator_id == user_id) | (P2PTrade.counterparty_id == user_id)
@@ -139,6 +141,13 @@ def create_app(config_name='default'):
             })
 
         hellobar_items.sort(key=lambda item: item['priority'])
+        guest_recovery_notice = None
+        if session.get('auth_method') == 'guest':
+            guest_recovery_notice = {
+                'title': f'Save your guest recovery key for {current_user.username}',
+                'detail': 'Use it later to return as this same anonymous P2P identity, even from another browser.',
+                'href': url_for('auth.guest_recovery'),
+            }
 
         return {
             'current_user': current_user,
@@ -147,6 +156,7 @@ def create_app(config_name='default'):
             'hellobar_items': hellobar_items[:3],
             'hellobar_count': len(hellobar_items),
             'hellobar_primary': hellobar_items[0] if hellobar_items else None,
+            'guest_recovery_notice': guest_recovery_notice,
         }
 
     return app

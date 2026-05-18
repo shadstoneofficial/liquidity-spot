@@ -95,6 +95,7 @@
                             <a href="{{ url_for('main.activity') }}" class="block rounded px-3 py-2 hover:bg-white/5 hover:text-gfa-light">Activity</a>
                             <a href="{{ url_for('main.dashboard') }}" class="block rounded px-3 py-2 hover:bg-white/5 hover:text-gfa-light">Dashboard</a>
                             {% if session.get('auth_method') == 'guest' %}
+                                <a href="{{ url_for('auth.guest_recovery') }}" class="block rounded px-3 py-2 hover:bg-white/5 hover:text-gfa-light">Guest Recovery Key</a>
                                 <a href="{{ url_for('auth.login') }}" class="block rounded px-3 py-2 text-gfa-light hover:bg-white/5 hover:text-white">Connect GFAVIP for Gems</a>
                             {% endif %}
                             {% if session.get('tier') == 'team' %}
@@ -125,6 +126,7 @@
                     <a href="{{ url_for('main.profile') }}" class="hover:text-gfa-light">Profile</a>
                     <a href="{{ url_for('main.activity') }}" class="hover:text-gfa-light">Activity</a>
                     {% if session.get('auth_method') == 'guest' %}
+                        <a href="{{ url_for('auth.guest_recovery') }}" class="hover:text-gfa-light">Guest Recovery Key</a>
                         <a href="{{ url_for('auth.login') }}" class="hover:text-gfa-light">Connect GFAVIP for Gems</a>
                     {% endif %}
                 {% endif %}
@@ -150,8 +152,22 @@
         });
     </script>
 
-    <section class="border-y border-gfa-light/20 bg-black/35">
-        <div class="container mx-auto px-4 py-3">
+    <section class="sticky top-0 z-40 border-y border-gfa-light/20 bg-black/90 backdrop-blur">
+        <div class="container mx-auto space-y-3 px-4 py-3">
+            {% if guest_recovery_notice %}
+                <div class="flex flex-col gap-3 rounded border border-gfa-light/30 bg-gfa-light/10 p-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="min-w-0">
+                        <p class="text-xs font-bold uppercase tracking-wide text-gfa-light">Anonymous guest account</p>
+                        <p class="text-sm text-white">
+                            <span class="font-bold">{{ guest_recovery_notice.title }}</span>
+                            <span class="text-gfa-grey">- {{ guest_recovery_notice.detail }}</span>
+                        </p>
+                    </div>
+                    <a href="{{ guest_recovery_notice.href }}" class="shrink-0 rounded bg-gfa-light px-3 py-1.5 text-center text-sm font-bold text-gfa-dark hover:bg-white transition">
+                        Show Recovery Key
+                    </a>
+                </div>
+            {% endif %}
             {% if hellobar_items %}
                 <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
                     <div class="min-w-0">
@@ -178,7 +194,7 @@
                         </a>
                     </div>
                 </div>
-            {% else %}
+            {% elif not guest_recovery_notice %}
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <p class="text-sm text-gfa-grey">
                         <strong class="text-white">No active trades yet.</strong>
@@ -221,6 +237,7 @@
                     <a href="{{ url_for('main.profile') }}" class="hover:text-gfa-light">Profile</a>
                     <a href="{{ url_for('main.activity') }}" class="hover:text-gfa-light">Activity</a>
                     {% if session.get('auth_method') == 'guest' %}
+                        <a href="{{ url_for('auth.guest_recovery') }}" class="hover:text-gfa-light">Guest Recovery Key</a>
                         <a href="{{ url_for('auth.login') }}" class="hover:text-gfa-light">Connect GFAVIP for Gems</a>
                     {% endif %}
                 {% endif %}

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Guest Recovery | Liquidity.spot{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-6">
+    <div class="bg-black/30 p-8 rounded-lg border border-gfa-grey/20">
+        <div class="inline-flex items-center gap-2 bg-gfa-light/20 text-gfa-light text-sm font-bold px-3 py-1 rounded-full mb-4">
+            Anonymous Guest
+        </div>
+        <h1 class="text-4xl font-bold text-gfa-light mb-4">Guest Recovery Key</h1>
+        <p class="text-gfa-grey">
+            This key restores <span class="font-bold text-white">{{ user.username }}</span> later, including this guest account's P2P rooms and history. Keep it private; anyone with the key can enter as this guest.
+        </p>
+    </div>
+
+    <div class="bg-black/30 p-6 rounded-lg border border-gfa-grey/20">
+        <label class="block text-sm font-bold uppercase tracking-wide text-gfa-grey mb-2">Recovery Key</label>
+        <input
+            type="text"
+            readonly
+            value="{{ token }}"
+            class="w-full rounded border border-gfa-grey/30 bg-black/70 px-3 py-3 font-mono text-sm text-white"
+            onclick="this.select()"
+        >
+        <p class="mt-3 text-sm text-gfa-grey">
+            The server stores only a hash of this key, so it cannot be recovered if you lose it. While this browser session is active, you can come back here or rotate it.
+        </p>
+    </div>
+
+    <div class="flex flex-col gap-3 sm:flex-row">
+        <a href="{{ url_for('main.dashboard') }}" class="rounded bg-gfa-light px-5 py-3 text-center font-bold text-gfa-dark hover:bg-white transition">
+            Back To Dashboard
+        </a>
+        <form method="POST" action="{{ url_for('auth.rotate_guest_recovery') }}">
+            <button type="submit" class="w-full rounded border border-red-500/40 px-5 py-3 font-bold text-red-300 hover:bg-red-500/10 transition">
+                Rotate Key
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

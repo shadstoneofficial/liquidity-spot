@@ -3,8 +3,39 @@ from functools import wraps
 import requests
 from models import db, User
 from datetime import datetime
+import hashlib
+import hmac
+import re
+import secrets
 
 auth_bp = Blueprint('auth', __name__)
+GUEST_RECOVERY_TOKEN_PATTERN = re.compile(r'^ls-guest-[0-9a-f]{4}(?:-[0-9a-f]{4}){7}$')
+
+
+def generate_guest_recovery_token():
+    token_hex = secrets.token_hex(16)
+    groups = '-'.join(token_hex[index:index + 4] for index in range(0, len(token_hex), 4))
+    return f'ls-guest-{groups}'
+
+
+def normalize_guest_recovery_token(raw_token):
+    token = re.sub(r'\s+', '', (raw_token or '').strip().lower())
+    return token if GUEST_RECOVERY_TOKEN_PATTERN.fullmatch(token) else None
+
+
+def guest_recovery_digest(raw_token):
+    token = normalize_guest_recovery_token(raw_token)
+    if not token:
+        return None
+    pepper = current_app.config.get('SECRET_KEY') or 'liquidity-spot-dev'
+    return hmac.new(pepper.encode('utf-8'), token.encode('utf-8'), hashlib.sha256).hexdigest()
+
+
+def attach_guest_recovery_token(user):
+    token = generate_guest_recovery_token()
+    user.guest_recovery_digest = guest_recovery_digest(token)
+    session['guest_recovery_token'] = token
+    return token
 
 def login_required(f):
     @wraps(f)
@@ -21,6 +52,60 @@ def login():
         return redirect(url_for('main.dashboard'))
 
     return render_template('login.html')
+
+
+@auth_bp.route('/guest/recovery', methods=['GET', 'POST'])
+def guest_recovery():
+    if request.method == 'POST':
+        token = normalize_guest_recovery_token(request.form.get('guest_recovery_token'))
+        digest = guest_recovery_digest(token)
+        if not digest:
+            flash('Enter a valid guest recovery key.', 'error')
+            return redirect(url_for('auth.login'))
+
+        user = User.query.filter_by(guest_recovery_digest=digest, tier='guest').first()
+        if not user:
+            flash('No guest account matched that recovery key.', 'error')
+            return redirect(url_for('auth.login'))
+
+        session.clear()
+        session['user_id'] = user.id
+        session['username'] = user.username
+        session['tier'] = user.tier
+        session['auth_method'] = 'guest'
+        session['guest_recovery_token'] = token
+        flash(f'Recovered {user.username}. You can keep trading under this anonymous guest identity.', 'success')
+        return redirect(url_for('main.dashboard'))
+
+    if session.get('auth_method') != 'guest' or not session.get('user_id'):
+        flash('Start or recover a guest session first.', 'warning')
+        return redirect(url_for('auth.login'))
+
+    user = User.query.get(session['user_id'])
+    if not user or user.tier != 'guest':
+        flash('Guest recovery keys are only available for guest accounts.', 'warning')
+        return redirect(url_for('main.dashboard'))
+
+    token = session.get('guest_recovery_token')
+    if not user.guest_recovery_digest or not guest_recovery_digest(token) == user.guest_recovery_digest:
+        token = attach_guest_recovery_token(user)
+        db.session.commit()
+
+    return render_template('guest_recovery.html', token=token, user=user)
+
+
+@auth_bp.route('/guest/recovery/rotate', methods=['POST'])
+@login_required
+def rotate_guest_recovery():
+    if session.get('auth_method') != 'guest':
+        flash('Only guest accounts use guest recovery keys.', 'warning')
+        return redirect(url_for('main.dashboard'))
+
+    user = User.query.get_or_404(session['user_id'])
+    token = attach_guest_recovery_token(user)
+    db.session.commit()
+    flash('Guest recovery key rotated. The old key no longer works.', 'success')
+    return render_template('guest_recovery.html', token=token, user=user)
 
 
 @auth_bp.route('/login/gfavip')
