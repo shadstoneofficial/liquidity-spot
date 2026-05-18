@@ -4,6 +4,23 @@
 
 {% block content %}
 <div class="space-y-6">
+    {% if feedback_needed_trades %}
+    <div class="rounded-lg border border-gfa-light/40 bg-gfa-light/10 p-6">
+        <h2 class="text-2xl font-bold mb-2 text-white">Feedback Needed</h2>
+        <p class="text-gfa-grey mb-4">These completed rooms are waiting for your counterparty rating.</p>
+        <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {% for trade in feedback_needed_trades %}
+            {% set counterparty = trade.counterparty if trade.creator_id == user.id else trade.creator %}
+            <a href="{{ url_for('main.p2p_trade_room', trade_id=trade.id) }}" class="block rounded border border-gfa-light/30 bg-black/30 p-4 hover:bg-black/50">
+                <p class="text-sm font-bold uppercase tracking-wide text-gfa-light">P2P Trade #{{ trade.id }}</p>
+                <p class="mt-1 text-lg font-bold text-white">Rate {{ counterparty.username }}</p>
+                <p class="mt-1 text-sm text-gfa-grey">{{ trade.offer.amount_hns }} HNS · completed {{ trade.updated_at.strftime('%Y-%m-%d') }}</p>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
     <div class="bg-black/30 p-6 rounded-lg">
         <h2 class="text-2xl font-bold mb-4 text-gfa-light">Open / In Progress Trades</h2>
         {% if active_p2p_trades or active_swaps %}
@@ -93,6 +110,99 @@
         {% else %}
             <p class="text-gfa-grey">No open or in-progress trades right now.</p>
         {% endif %}
+    </div>
+
+    <div class="bg-black/30 p-6 rounded-lg">
+        <h2 class="text-2xl font-bold mb-4 text-gfa-light">Trade History & Records</h2>
+        <div class="space-y-6">
+            <div>
+                <h3 class="text-xl font-bold mb-3 text-white">P2P Trade Rooms</h3>
+                {% if historical_p2p_trades %}
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left min-w-[860px]">
+                            <thead>
+                                <tr class="border-b border-gfa-grey/30">
+                                    <th class="p-2 whitespace-nowrap">Trade</th>
+                                    <th class="p-2 whitespace-nowrap">Counterparty</th>
+                                    <th class="p-2 whitespace-nowrap">Status</th>
+                                    <th class="p-2 whitespace-nowrap">Updated</th>
+                                    <th class="p-2 whitespace-nowrap">Feedback</th>
+                                    <th class="p-2 whitespace-nowrap">Records</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for trade in historical_p2p_trades %}
+                                {% set counterparty = trade.counterparty if trade.creator_id == user.id else trade.creator %}
+                                {% set my_feedback = feedback_by_trade_id.get(trade.id) %}
+                                <tr class="border-b border-gfa-grey/10 hover:bg-white/5">
+                                    <td class="p-2 whitespace-nowrap">#{{ trade.id }} / Offer #{{ trade.offer_id }}</td>
+                                    <td class="p-2 whitespace-nowrap">{{ counterparty.username }}</td>
+                                    <td class="p-2 whitespace-nowrap uppercase">{{ trade.status }}</td>
+                                    <td class="p-2 whitespace-nowrap">{{ trade.updated_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td class="p-2 whitespace-nowrap">
+                                        {% if trade.status == 'completed' %}
+                                            {% if my_feedback %}
+                                                <span class="text-gfa-light font-bold">{{ my_feedback.rating }}/5 left</span>
+                                            {% else %}
+                                                <a href="{{ url_for('main.p2p_trade_room', trade_id=trade.id) }}" class="rounded bg-gfa-light px-3 py-1.5 text-sm font-bold text-gfa-dark hover:bg-white">Leave Feedback</a>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-gfa-grey">Not available</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="p-2 whitespace-nowrap">
+                                        <div class="flex flex-wrap gap-3">
+                                            <a href="{{ url_for('main.p2p_trade_room', trade_id=trade.id) }}" class="text-gfa-blue hover:text-blue-300">Open Room</a>
+                                            <a href="{{ url_for('main.p2p_trade_receipt', trade_id=trade.id, file_format='pdf') }}" class="text-gfa-light hover:text-white">PDF</a>
+                                            <a href="{{ url_for('main.p2p_trade_receipt', trade_id=trade.id, file_format='txt') }}" class="text-gfa-grey hover:text-white">TXT</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-gfa-grey">No completed or closed P2P rooms yet.</p>
+                {% endif %}
+            </div>
+
+            <div>
+                <h3 class="text-xl font-bold mb-3 text-white">Atomic Swap History</h3>
+                {% if historical_swaps %}
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left min-w-[700px]">
+                            <thead>
+                                <tr class="border-b border-gfa-grey/30">
+                                    <th class="p-2 whitespace-nowrap">ID</th>
+                                    <th class="p-2 whitespace-nowrap">Role</th>
+                                    <th class="p-2 whitespace-nowrap">Status</th>
+                                    <th class="p-2 whitespace-nowrap">Updated</th>
+                                    <th class="p-2 whitespace-nowrap">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for swap in historical_swaps %}
+                                <tr class="border-b border-gfa-grey/10 hover:bg-white/5">
+                                    <td class="p-2 whitespace-nowrap">#{{ swap.id }}</td>
+                                    <td class="p-2 whitespace-nowrap">
+                                        {% if swap.matcher_id == user.id %}Matcher (Taker){% else %}Order Creator (Maker){% endif %}
+                                    </td>
+                                    <td class="p-2 uppercase whitespace-nowrap">{{ swap.status }}</td>
+                                    <td class="p-2 whitespace-nowrap">{{ (swap.updated_at or swap.created_at).strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td class="p-2 whitespace-nowrap">
+                                        <a href="{{ url_for('main.swap_details', id=swap.id) }}" class="text-gfa-blue hover:text-blue-300">View Details</a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-gfa-grey">No closed atomic swaps yet.</p>
+                {% endif %}
+            </div>
+        </div>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">

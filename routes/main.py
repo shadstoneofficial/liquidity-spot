@@ -1350,9 +1350,18 @@ def dashboard():
     my_p2p_trades = P2PTrade.query.filter(
         (P2PTrade.creator_id == user.id) | (P2PTrade.counterparty_id == user.id)
     ).order_by(P2PTrade.updated_at.desc()).all()
+    my_feedback = P2PTradeFeedback.query.filter_by(reviewer_id=user.id).all()
+    feedback_by_trade_id = {item.trade_id: item for item in my_feedback}
 
     active_swaps = [swap for swap in my_swaps if swap.status not in ['completed', 'canceled', 'refunded']]
-    active_p2p_trades = [trade for trade in my_p2p_trades if trade.status not in ['completed', 'canceled']]
+    final_p2p_statuses = {'completed', 'canceled', 'disputed', 'no_show'}
+    active_p2p_trades = [trade for trade in my_p2p_trades if trade.status not in final_p2p_statuses]
+    historical_p2p_trades = [trade for trade in my_p2p_trades if trade.status in final_p2p_statuses]
+    feedback_needed_trades = [
+        trade for trade in historical_p2p_trades
+        if trade.status == 'completed' and trade.id not in feedback_by_trade_id
+    ]
+    historical_swaps = [swap for swap in my_swaps if swap.status in ['completed', 'canceled', 'refunded', 'disputed']]
 
     return render_template(
         'dashboard.html',
@@ -1360,7 +1369,11 @@ def dashboard():
         orders=my_orders,
         swaps=my_swaps,
         active_swaps=active_swaps,
-        active_p2p_trades=active_p2p_trades
+        active_p2p_trades=active_p2p_trades,
+        historical_p2p_trades=historical_p2p_trades,
+        historical_swaps=historical_swaps,
+        feedback_needed_trades=feedback_needed_trades,
+        feedback_by_trade_id=feedback_by_trade_id
     )
 
 
