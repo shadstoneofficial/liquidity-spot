@@ -91,6 +91,51 @@
     </section>
     {% endif %}
 
+    {% if trade.status == 'completed' %}
+    <section class="rounded-lg border border-gfa-light/40 bg-gfa-light/10 p-5">
+        <div class="grid gap-5 lg:grid-cols-[1fr_340px]">
+            <div>
+                <p class="text-sm font-bold uppercase tracking-wide text-gfa-light">Feedback is open</p>
+                <h2 class="mt-1 text-2xl font-bold text-white">Rate {{ counterparty_user.username }}</h2>
+                <p class="mt-2 text-gfa-grey">
+                    This helps build a long-term reputation trail for guest and GFAVIP accounts. Feedback is tied to this completed trade room.
+                </p>
+            </div>
+            <div class="rounded border border-gfa-grey/20 bg-black/30 p-4">
+                <p class="text-sm text-gfa-grey">Counterparty reputation</p>
+                {% if counterparty_feedback_stats.count %}
+                    <p class="mt-1 text-2xl font-bold text-white">{{ counterparty_feedback_stats.average }}/5</p>
+                    <p class="text-sm text-gfa-grey">
+                        {{ counterparty_feedback_stats.count }} {{ 'rating' if counterparty_feedback_stats.count == 1 else 'ratings' }}
+                        · {{ counterparty_feedback_stats.completed_trades }} completed P2P {{ 'trade' if counterparty_feedback_stats.completed_trades == 1 else 'trades' }}
+                    </p>
+                {% else %}
+                    <p class="mt-1 text-lg font-bold text-white">No ratings yet</p>
+                    <p class="text-sm text-gfa-grey">This may be their first completed trade.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <form method="POST" action="{{ url_for('main.submit_p2p_trade_feedback', trade_id=trade.id) }}" class="mt-5 grid gap-4 lg:grid-cols-[220px_1fr_auto] lg:items-end">
+            <div>
+                <label class="mb-1 block text-sm font-bold text-white" for="rating">Rating</label>
+                <select id="rating" name="rating" class="w-full rounded border border-gfa-grey/30 bg-black/50 p-3 text-white" required>
+                    {% for score in [5, 4, 3, 2, 1] %}
+                    <option value="{{ score }}" {{ 'selected' if my_feedback and my_feedback.rating == score else '' }}>{{ score }} / 5</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="mb-1 block text-sm font-bold text-white" for="feedback-comment">Short note</label>
+                <input id="feedback-comment" name="comment" type="text" maxlength="1000" value="{{ my_feedback.comment if my_feedback else '' }}" class="w-full rounded border border-gfa-grey/30 bg-black/50 p-3 text-white" placeholder="Fast communication, settled as agreed, issue resolved, etc.">
+            </div>
+            <button type="submit" class="rounded bg-gfa-light px-5 py-3 font-bold text-gfa-dark hover:bg-white">
+                {{ 'Update Feedback' if my_feedback else 'Save Feedback' }}
+            </button>
+        </form>
+    </section>
+    {% endif %}
+
     <div class="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_340px]">
         <section class="rounded-lg border border-gfa-grey/20 bg-black/30 p-5">
             <div class="flex flex-col gap-2 border-b border-gfa-grey/10 pb-4 sm:flex-row sm:items-end sm:justify-between">
@@ -161,6 +206,30 @@
                 <div class="mt-4 rounded border border-gfa-grey/20 bg-black/30 p-3 text-sm text-gfa-grey">
                     <strong class="text-white">Offer notes:</strong> {{ trade.offer.notes }}
                 </div>
+                {% endif %}
+            </section>
+
+            <section class="rounded-lg border border-gfa-grey/20 bg-black/30 p-5">
+                <h2 class="text-xl font-bold text-white">Feedback</h2>
+                {% if trade_feedback %}
+                    <div class="mt-4 space-y-3">
+                        {% for item in trade_feedback %}
+                        <div class="rounded border border-gfa-grey/20 bg-black/30 p-3 text-sm">
+                            <div class="flex items-center justify-between gap-3">
+                                <p class="font-bold text-white">{{ item.reviewer.username }}</p>
+                                <p class="font-bold text-gfa-light">{{ item.rating }}/5</p>
+                            </div>
+                            <p class="text-gfa-grey">for {{ item.reviewee.username }}</p>
+                            {% if item.comment %}
+                            <p class="mt-2 text-gfa-grey">{{ item.comment }}</p>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% elif trade.status == 'completed' %}
+                    <p class="mt-3 text-sm text-gfa-grey">No feedback yet. Both parties can leave one rating for this completed trade.</p>
+                {% else %}
+                    <p class="mt-3 text-sm text-gfa-grey">Feedback opens after the trade is marked complete.</p>
                 {% endif %}
             </section>
 

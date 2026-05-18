@@ -145,3 +145,20 @@ class P2PTradeParticipantState(db.Model):
     last_viewed_at = db.Column(db.DateTime, default=datetime.utcnow)
     trade = db.relationship('P2PTrade', backref='participant_states')
     user = db.relationship('User')
+
+class P2PTradeFeedback(db.Model):
+    __tablename__ = 'p2p_trade_feedback'
+    __table_args__ = (
+        db.UniqueConstraint('trade_id', 'reviewer_id', name='uq_p2p_trade_feedback_reviewer'),
+    )
+    id = db.Column(db.Integer, primary_key=True)
+    trade_id = db.Column(db.Integer, db.ForeignKey('p2p_trades.id'), nullable=False)
+    reviewer_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
+    reviewee_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
+    rating = db.Column(db.Integer, nullable=False)
+    comment = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    trade = db.relationship('P2PTrade', backref='feedback')
+    reviewer = db.relationship('User', foreign_keys=[reviewer_id])
+    reviewee = db.relationship('User', foreign_keys=[reviewee_id])

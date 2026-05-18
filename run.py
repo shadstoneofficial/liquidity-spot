@@ -66,6 +66,24 @@ def ensure_p2p_schema():
                     text(f"ALTER TABLE p2p_trades ADD COLUMN {column_name} {column_type}")
                 )
 
+def ensure_p2p_feedback_schema():
+    """Create feedback indexes for completed P2P trade reputation."""
+    inspector = inspect(db.engine)
+
+    if 'p2p_trade_feedback' not in inspector.get_table_names():
+        return
+
+    index_names = {index['name'] for index in inspector.get_indexes('p2p_trade_feedback')}
+    with db.engine.begin() as connection:
+        if 'idx_p2p_trade_feedback_reviewee' not in index_names:
+            connection.execute(text(
+                "CREATE INDEX idx_p2p_trade_feedback_reviewee ON p2p_trade_feedback (reviewee_id)"
+            ))
+        if 'idx_p2p_trade_feedback_trade' not in index_names:
+            connection.execute(text(
+                "CREATE INDEX idx_p2p_trade_feedback_trade ON p2p_trade_feedback (trade_id)"
+            ))
+
 def ensure_atomic_swap_schema():
     """Lightweight schema patching for the manual HTLC lifecycle."""
     inspector = inspect(db.engine)
@@ -139,6 +157,7 @@ try:
         db.create_all()
         ensure_user_schema()
         ensure_p2p_schema()
+        ensure_p2p_feedback_schema()
         ensure_atomic_swap_schema()
         ensure_numeric_precision()
         print("Database tables created!", flush=True)

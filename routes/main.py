@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app, Response, jsonify
-from models import db, User, Order, Swap, SwapMessage, P2POffer, P2PTrade, P2PTradeMessage, P2PTradeParticipantState
+from models import db, User, Order, Swap, SwapMessage, P2POffer, P2PTrade, P2PTradeMessage, P2PTradeParticipantState, P2PTradeFeedback
 import os
 from routes.auth import attach_guest_recovery_token, login_required
 import secrets
@@ -404,6 +404,34 @@ def _p2p_trade_parties(trade):
     return alice_user, bob_user
 
 
+def _p2p_counterparty(trade, user_id):
+    return trade.counterparty if user_id == trade.creator_id else trade.creator
+
+
+def _p2p_feedback_stats(user_id):
+    feedback = P2PTradeFeedback.query.filter_by(reviewee_id=user_id).all()
+    completed_trades = P2PTrade.query.filter(
+        ((P2PTrade.creator_id == user_id) | (P2PTrade.counterparty_id == user_id)) &
+        (P2PTrade.status == 'completed')
+    ).count()
+
+    if not feedback:
+        return {
+            'count': 0,
+            'average': None,
+            'positive_count': 0,
+            'completed_trades': completed_trades,
+        }
+
+    rating_total = sum(item.rating for item in feedback)
+    return {
+        'count': len(feedback),
+        'average': round(rating_total / len(feedback), 1),
+        'positive_count': sum(1 for item in feedback if item.rating >= 4),
+        'completed_trades': completed_trades,
+    }
+
+
 def _build_p2p_trade_receipt_text(trade, requested_by=None):
     alice_user, bob_user = _p2p_trade_parties(trade)
     requested_at = datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')
@@ -484,6 +512,22 @@ def _build_p2p_trade_receipt_text(trade, requested_by=None):
 
     lines.extend([
         '',
+        'Counterparty Feedback',
+        '-' * 36,
+    ])
+    feedback_items = sorted(trade.feedback, key=lambda item: item.created_at)
+    if not feedback_items:
+        lines.append('No feedback recorded.')
+    else:
+        for feedback in feedback_items:
+            when = feedback.created_at.strftime('%Y-%m-%d %H:%M UTC') if feedback.created_at else 'Unknown time'
+            lines.append(f'[{when}] {feedback.reviewer.username} rated {feedback.reviewee.username}: {feedback.rating}/5')
+            if feedback.comment:
+                lines.append(feedback.comment)
+            lines.append('')
+
+    lines.extend([
+        '',
         'Record Note',
         '-' * 36,
         'This receipt is generated from the Liquidity.spot trade room record. '
@@ -498,46 +542,78 @@ def _pdf_escape(value):
     return safe.replace('\\', '\\\\').replace('(', '\\(').replace(')', '\\)')
 
 
-def _build_simple_text_pdf(title, text):
-    max_chars = 92
-    max_lines = 58
-    wrapped_lines = []
-    for raw_line in text.splitlines():
-        line = raw_line.rstrip()
+def _pdf_color(hex_color):
+    hex_value = hex_color.lstrip('#')
+    red = int(hex_value[0:2], 16) / 255
+    green = int(hex_value[2:4], 16) / 255
+    blue = int(hex_value[4:6], 16) / 255
+    return f'{red:.3f} {green:.3f} {blue:.3f}'
+
+
+def _pdf_text(commands, x, y, text, size=10, font='F1', color='#111111', leading=None):
+    commands.append(f'{_pdf_color(color)} rg')
+    commands.append('BT')
+    commands.append(f'/{font} {size} Tf')
+    if leading:
+        commands.append(f'{leading} TL')
+    commands.append(f'{x} {y} Td')
+    commands.append(f'({_pdf_escape(str(text))}) Tj')
+    commands.append('ET')
+
+
+def _pdf_rect(commands, x, y, width, height, fill=None, stroke=None, stroke_width=1):
+    if fill:
+        commands.append(f'{_pdf_color(fill)} rg')
+    if stroke:
+        commands.append(f'{_pdf_color(stroke)} RG')
+        commands.append(f'{stroke_width} w')
+    operator = 'B' if fill and stroke else 'f' if fill else 'S'
+    commands.append(f'{x} {y} {width} {height} re {operator}')
+
+
+def _pdf_line(commands, x1, y1, x2, y2, color='#d2d0d2', stroke_width=1):
+    commands.append(f'{_pdf_color(color)} RG')
+    commands.append(f'{stroke_width} w')
+    commands.append(f'{x1} {y1} m {x2} {y2} l S')
+
+
+def _wrap_pdf_lines(text, max_chars):
+    wrapped = []
+    for raw_line in str(text or '').splitlines() or ['']:
+        line = raw_line.strip()
         if not line:
-            wrapped_lines.append('')
+            wrapped.append('')
             continue
         while len(line) > max_chars:
             split_at = line.rfind(' ', 0, max_chars)
-            if split_at < 30:
+            if split_at < 24:
                 split_at = max_chars
-            wrapped_lines.append(line[:split_at])
+            wrapped.append(line[:split_at])
             line = line[split_at:].lstrip()
-        wrapped_lines.append(line)
+        wrapped.append(line)
+    return wrapped
 
-    pages = [wrapped_lines[i:i + max_lines] for i in range(0, len(wrapped_lines), max_lines)] or [[]]
+
+def _build_pdf_document(title, page_commands):
     objects = [
         '<< /Type /Catalog /Pages 2 0 R >>',
         '',
+        '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+        '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>',
         '<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>'
     ]
     page_refs = []
 
-    for page_lines in pages:
-        content = ['BT', '/F1 9 Tf', '50 770 Td', '12 TL']
-        for line in page_lines:
-            content.append(f'({_pdf_escape(line)}) Tj')
-            content.append('T*')
-        content.append('ET')
-        stream = '\n'.join(content)
+    for commands in page_commands:
+        stream = '\n'.join(commands)
         stream_bytes = stream.encode('latin-1', errors='replace')
-
         page_object_number = len(objects) + 1
         content_object_number = page_object_number + 1
         page_refs.append(f'{page_object_number} 0 R')
         objects.append(
             f'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] '
-            f'/Resources << /Font << /F1 3 0 R >> >> /Contents {content_object_number} 0 R >>'
+            f'/Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> '
+            f'/Contents {content_object_number} 0 R >>'
         )
         objects.append(f'<< /Length {len(stream_bytes)} >>\nstream\n{stream}\nendstream')
 
@@ -559,6 +635,182 @@ def _build_simple_text_pdf(title, text):
         f'startxref\n{xref_offset}\n%%EOF\n'
     )
     return ''.join(pdf).encode('latin-1', errors='replace')
+
+
+def _build_p2p_trade_receipt_pdf(trade, requested_by=None):
+    alice_user, bob_user = _p2p_trade_parties(trade)
+    generated_at = datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')
+    created_at = trade.created_at.strftime('%Y-%m-%d %H:%M UTC') if trade.created_at else 'Unknown'
+    updated_at = trade.updated_at.strftime('%Y-%m-%d %H:%M UTC') if trade.updated_at else 'Unknown'
+    amount_hns = Decimal(trade.offer.amount_hns)
+    price_btc = Decimal(trade.offer.price_btc_per_hns)
+    total_btc = amount_hns * price_btc
+    status_colors = {
+        'matched': '#15689e',
+        'completed': '#29b973',
+        'disputed': '#b91c1c',
+        'canceled': '#6b7280',
+        'no_show': '#c2410c',
+    }
+    status_color = status_colors.get(trade.status, '#15689e')
+
+    pages = []
+    commands = []
+    y = 0
+    page_number = 0
+
+    def start_page():
+        nonlocal commands, y, page_number
+        if commands:
+            _pdf_text(commands, 52, 30, 'Liquidity.spot receipt - generated from the trade room record', 8, 'F1', '#6b7280')
+            _pdf_text(commands, 530, 30, f'Page {page_number}', 8, 'F1', '#6b7280')
+            pages.append(commands)
+        page_number += 1
+        commands = []
+        _pdf_rect(commands, 0, 0, 612, 792, fill='#ffffff')
+        _pdf_rect(commands, 0, 724, 612, 68, fill='#124e2c')
+        _pdf_rect(commands, 0, 712, 612, 12, fill='#29b973')
+        _pdf_text(commands, 52, 756, 'Liquidity.spot', 22, 'F2', '#ffffff')
+        _pdf_text(commands, 52, 738, 'P2P trade receipt', 11, 'F1', '#d2d0d2')
+        _pdf_rect(commands, 438, 744, 122, 24, fill=status_color)
+        _pdf_text(commands, 456, 752, trade.status.upper(), 10, 'F2', '#ffffff')
+        y = 676
+
+    def ensure_space(required_height):
+        nonlocal y
+        if y - required_height < 62:
+            start_page()
+
+    def decimal_text(value, places):
+        return f'{Decimal(value):.{places}f}'
+
+    def heading(label):
+        nonlocal y
+        ensure_space(36)
+        _pdf_text(commands, 52, y, label, 13, 'F2', '#124e2c')
+        _pdf_line(commands, 52, y - 8, 560, y - 8, '#29b973', 1.2)
+        y -= 30
+
+    def key_value(x, label, value, width=230):
+        nonlocal y
+        _pdf_text(commands, x, y, label.upper(), 7, 'F2', '#6b7280')
+        for index, line in enumerate(_wrap_pdf_lines(value, max(24, int(width / 5.8)))[:3]):
+            _pdf_text(commands, x, y - 13 - (index * 11), line, 10, 'F1', '#111111')
+
+    def card(x, y_top, width, height, label, value, accent='#29b973'):
+        _pdf_rect(commands, x, y_top - height, width, height, fill='#f7faf8', stroke='#d2d0d2', stroke_width=0.5)
+        _pdf_rect(commands, x, y_top - height, 5, height, fill=accent)
+        _pdf_text(commands, x + 14, y_top - 18, label.upper(), 7, 'F2', '#6b7280')
+        for index, line in enumerate(_wrap_pdf_lines(value, max(18, int((width - 24) / 5.8)))[:2]):
+            _pdf_text(commands, x + 14, y_top - 34 - (index * 12), line, 11, 'F2' if index == 0 else 'F1', '#111111')
+
+    def paragraph(text, max_chars=92, size=9, color='#374151', font='F1'):
+        nonlocal y
+        for line in _wrap_pdf_lines(text, max_chars):
+            ensure_space(16)
+            _pdf_text(commands, 52, y, line, size, font, color)
+            y -= 13
+
+    start_page()
+
+    _pdf_text(commands, 52, y, f'Trade #{trade.id}', 28, 'F2', '#124e2c')
+    _pdf_text(commands, 52, y - 22, f'Offer #{trade.offer_id} | Generated {generated_at}', 10, 'F1', '#6b7280')
+    _pdf_text(commands, 52, y - 38, f'Requested by {requested_by.username if requested_by else "Unknown"}', 9, 'F1', '#6b7280')
+    y -= 68
+
+    card(52, y, 158, 62, 'You can verify', 'Parties, terms, TXIDs, messages', '#29b973')
+    card(226, y, 158, 62, 'Status', f'{trade.status} / {trade.milestone}', status_color)
+    card(400, y, 160, 62, 'Total', f'{total_btc:.12f} BTC', '#15689e')
+    y -= 92
+
+    heading('Trade Summary')
+    key_value(52, 'Alice - HNS seller', alice_user.username)
+    key_value(315, 'Bob - HNS buyer / BTC seller', bob_user.username)
+    y -= 52
+    key_value(52, 'Amount', f'{decimal_text(amount_hns, 8)} HNS')
+    key_value(185, 'Price', f'{decimal_text(price_btc, 12)} BTC/HNS')
+    key_value(365, 'Payment method', trade.offer.payment_method)
+    y -= 52
+    key_value(52, 'Created', created_at)
+    key_value(215, 'Updated', updated_at)
+    key_value(378, 'Gems bond', f'{trade.maker_bond_amount or 0} / {trade.maker_bond_status}')
+    y -= 38
+
+    if trade.latest_note:
+        heading('Latest Room Note')
+        paragraph(trade.latest_note, 96, 9, '#374151')
+        y -= 8
+
+    heading('Transaction Records')
+    key_value(52, 'Alice lock TXID', trade.alice_lock_txid or 'Not submitted', 500)
+    y -= 48
+    key_value(52, 'Bob lock TXID', trade.bob_lock_txid or 'Not submitted', 500)
+    y -= 48
+
+    heading('Review State')
+    key_value(52, 'Admin review', trade.admin_review_status)
+    key_value(220, 'Admin resolution', trade.admin_resolution or 'Pending')
+    if trade.admin_notes:
+        y -= 44
+        paragraph(f'Admin notes: {trade.admin_notes}', 96, 9, '#374151')
+    y -= 34
+
+    if trade.offer.notes:
+        ensure_space(80)
+        heading('Offer Notes')
+        paragraph(trade.offer.notes, 96, 9, '#374151')
+        y -= 8
+
+    heading('Message Transcript')
+    messages = sorted(trade.messages, key=lambda message: message.created_at)
+    if not messages:
+        paragraph('No messages recorded in this trade room yet.', 96, 9, '#6b7280')
+    else:
+        for message in messages:
+            when = message.created_at.strftime('%Y-%m-%d %H:%M UTC') if message.created_at else 'Unknown time'
+            lines = _wrap_pdf_lines(message.message, 84)
+            box_height = 34 + (len(lines) * 12)
+            ensure_space(box_height + 10)
+            _pdf_rect(commands, 52, y - box_height, 508, box_height, fill='#f7faf8', stroke='#d2d0d2', stroke_width=0.5)
+            _pdf_text(commands, 66, y - 18, message.user.username, 10, 'F2', '#124e2c')
+            _pdf_text(commands, 380, y - 18, when, 8, 'F1', '#6b7280')
+            line_y = y - 36
+            for line in lines:
+                _pdf_text(commands, 66, line_y, line, 9, 'F1', '#374151')
+                line_y -= 12
+            y -= box_height + 12
+
+    ensure_space(80)
+    heading('Counterparty Feedback')
+    feedback_items = sorted(trade.feedback, key=lambda item: item.created_at)
+    if not feedback_items:
+        paragraph('No feedback recorded yet.', 96, 9, '#6b7280')
+    else:
+        for feedback in feedback_items:
+            when = feedback.created_at.strftime('%Y-%m-%d %H:%M UTC') if feedback.created_at else 'Unknown time'
+            lines = _wrap_pdf_lines(feedback.comment or 'No note left.', 84)
+            box_height = 34 + (len(lines) * 12)
+            ensure_space(box_height + 10)
+            _pdf_rect(commands, 52, y - box_height, 508, box_height, fill='#f7faf8', stroke='#d2d0d2', stroke_width=0.5)
+            _pdf_text(commands, 66, y - 18, f'{feedback.rating}/5 from {feedback.reviewer.username}', 10, 'F2', '#124e2c')
+            _pdf_text(commands, 360, y - 18, f'for {feedback.reviewee.username} | {when}', 8, 'F1', '#6b7280')
+            line_y = y - 36
+            for line in lines:
+                _pdf_text(commands, 66, line_y, line, 9, 'F1', '#374151')
+                line_y -= 12
+            y -= box_height + 12
+
+    ensure_space(66)
+    heading('Record Note')
+    paragraph(
+        'This receipt is generated from the Liquidity.spot trade room record. Participants remain responsible for verifying counterparties, transaction IDs, confirmations, and settlement.',
+        96,
+        8,
+        '#6b7280'
+    )
+
+    start_page()
+    return _build_pdf_document(f'Liquidity.spot Trade #{trade.id} Receipt', pages)
 
 @main_bp.route('/skill.md')
 def skill_md():
@@ -826,6 +1078,14 @@ def p2p_trade_room(trade_id):
     is_creator = session['user_id'] == trade.creator_id
     alice_user, bob_user = _p2p_trade_parties(trade)
     current_role = 'Alice' if session['user_id'] == alice_user.id else 'Bob'
+    counterparty_user = _p2p_counterparty(trade, session['user_id'])
+    my_feedback = P2PTradeFeedback.query.filter_by(
+        trade_id=trade.id,
+        reviewer_id=session['user_id']
+    ).first()
+    trade_feedback = P2PTradeFeedback.query.filter_by(trade_id=trade.id).order_by(
+        P2PTradeFeedback.created_at.asc()
+    ).all()
 
     participant_state = P2PTradeParticipantState.query.filter_by(
         trade_id=trade.id,
@@ -847,8 +1107,67 @@ def p2p_trade_room(trade_id):
         is_creator=is_creator,
         alice_user=alice_user,
         bob_user=bob_user,
-        current_role=current_role
+        current_role=current_role,
+        my_feedback=my_feedback,
+        trade_feedback=trade_feedback,
+        counterparty_feedback_stats=_p2p_feedback_stats(counterparty_user.id)
     )
+
+
+@main_bp.route('/p2p/trades/<int:trade_id>/feedback', methods=['POST'])
+@login_required
+def submit_p2p_trade_feedback(trade_id):
+    trade = P2PTrade.query.get_or_404(trade_id)
+    user_id = session['user_id']
+
+    if user_id not in [trade.creator_id, trade.counterparty_id]:
+        flash('You do not have permission to rate this trade.', 'error')
+        return redirect(url_for('main.p2p'))
+
+    if trade.status != 'completed':
+        flash('Feedback opens after the trade is marked complete.', 'warning')
+        return redirect(url_for('main.p2p_trade_room', trade_id=trade.id))
+
+    counterparty = _p2p_counterparty(trade, user_id)
+    try:
+        rating = int(request.form.get('rating') or 0)
+    except ValueError:
+        rating = 0
+
+    if rating < 1 or rating > 5:
+        flash('Choose a rating from 1 to 5.', 'error')
+        return redirect(url_for('main.p2p_trade_room', trade_id=trade.id))
+
+    comment = (request.form.get('comment') or '').strip()[:1000] or None
+    feedback = P2PTradeFeedback.query.filter_by(
+        trade_id=trade.id,
+        reviewer_id=user_id
+    ).first()
+
+    if feedback:
+        feedback.rating = rating
+        feedback.comment = comment
+        feedback.reviewee_id = counterparty.id
+        flash('Feedback updated. Thanks for keeping the reputation trail current.', 'success')
+    else:
+        feedback = P2PTradeFeedback(
+            trade_id=trade.id,
+            reviewer_id=user_id,
+            reviewee_id=counterparty.id,
+            rating=rating,
+            comment=comment
+        )
+        db.session.add(feedback)
+        flash('Feedback saved. This now counts toward the counterparty reputation trail.', 'success')
+
+    try:
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        current_app.logger.exception('Error saving P2P feedback')
+        flash('Could not save feedback. Please try again.', 'error')
+
+    return redirect(url_for('main.p2p_trade_room', trade_id=trade.id))
 
 
 @main_bp.route('/p2p/trades/<int:trade_id>/receipt.<file_format>')
@@ -872,7 +1191,7 @@ def p2p_trade_receipt(trade_id, file_format):
         )
 
     if file_format == 'pdf':
-        pdf_bytes = _build_simple_text_pdf(f'Liquidity.spot Trade #{trade.id} Receipt', receipt_text)
+        pdf_bytes = _build_p2p_trade_receipt_pdf(trade, requested_by=requested_by)
         return Response(
             pdf_bytes,
             mimetype='application/pdf',
@@ -991,6 +1310,7 @@ def p2p_trade_action(trade_id):
             flash('Maker Gems bond refunded on completion.', 'success')
         elif trade.maker_bond_amount > 0 and trade.maker_bond_status == 'locked':
             flash(f'Trade completed, but maker bond refund still needs attention: {refund_error}', 'error')
+        flash('Trade completed. You can now leave counterparty feedback in the trade room.', 'success')
 
     db.session.commit()
     flash('Trade action recorded.', 'success')
@@ -1053,13 +1373,19 @@ def profile():
         (P2PTrade.creator_id == user.id) | (P2PTrade.counterparty_id == user.id)
     ).count()
     order_count = Order.query.filter_by(user_id=user.id).count()
+    feedback_stats = _p2p_feedback_stats(user.id)
+    recent_feedback = P2PTradeFeedback.query.filter_by(reviewee_id=user.id).order_by(
+        P2PTradeFeedback.created_at.desc()
+    ).limit(5).all()
 
     return render_template(
         'profile.html',
         user=user,
         p2p_offer_count=p2p_offer_count,
         p2p_trade_count=p2p_trade_count,
-        order_count=order_count
+        order_count=order_count,
+        feedback_stats=feedback_stats,
+        recent_feedback=recent_feedback
     )
 
 
