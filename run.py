@@ -149,12 +149,23 @@ def ensure_numeric_precision():
             "ALTER TABLE p2p_offers ALTER COLUMN price_btc_per_hns TYPE NUMERIC(24,12)"
         ))
 
+def create_tables_tolerating_worker_race():
+    """Create tables while tolerating concurrent startup workers."""
+    try:
+        db.create_all()
+    except Exception as exc:
+        db.session.rollback()
+        message = str(exc).lower()
+        if 'already exists' not in message and 'duplicate' not in message:
+            raise
+        print(f"Table creation raced another worker; continuing: {exc}", flush=True)
+
 # Run migrations/create tables on startup
 # This is safe to run on every deploy for simple apps
 try:
     with app.app_context():
         print("Creating/Verifying database tables...", flush=True)
-        db.create_all()
+        create_tables_tolerating_worker_race()
         ensure_user_schema()
         ensure_p2p_schema()
         ensure_p2p_feedback_schema()
