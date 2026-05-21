@@ -5,11 +5,11 @@
 {% block content %}
 {% set total_btc = swap.order.amount_hns * swap.order.price_btc_per_hns %}
 {% set steps = [
-    ('initiated', 'Secret Ready'),
-    ('alice_locked', 'Alice HNS Lock'),
-    ('bob_locked', 'Bob BTC Lock'),
-    ('alice_claimed', 'Alice BTC Claim'),
-    ('completed', 'Bob HNS Claim')
+    ('initiated', 'Secret Ready', 'Alice', 'The shared secret hash exists. No BTC should be locked yet.'),
+    ('alice_locked', 'Alice HNS Lock', 'Alice', 'Alice locks HNS and records the HNS lock TXID.'),
+    ('bob_locked', 'Bob BTC Lock', 'Bob', 'Bob verifies the HNS lock, then locks BTC and records the BTC lock TXID.'),
+    ('alice_claimed', 'Alice BTC Claim', 'Alice', 'Alice claims BTC and reveals the secret.'),
+    ('completed', 'Bob HNS Claim', 'Bob', 'Bob uses the revealed secret to claim HNS.')
 ] %}
 {% set step_index = {
     'pending_secret': 0,
@@ -44,51 +44,77 @@
         </div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
-        {% for key, label in steps %}
-            {% set current = loop.index %}
-            <div class="rounded border p-3 {{ 'border-gfa-light bg-gfa-light/10 text-white' if current <= step_index else 'border-gfa-grey/20 bg-black/20 text-gfa-grey' }}">
-                <p class="text-xs uppercase">Step {{ current }}</p>
-                <p class="font-bold">{{ label }}</p>
+    <div class="bg-black/30 p-6 rounded-lg">
+        <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-2 mb-4">
+            <div>
+                <h2 class="text-xl font-bold text-white">Swap Roadmap</h2>
+                <p class="text-sm text-gfa-grey mt-1">Open any step to preview what happens before or after the current action.</p>
             </div>
-        {% endfor %}
+            <p class="text-sm text-gfa-grey">Current status: <span class="uppercase text-white font-bold">{{ swap.status }}</span></p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+            {% for key, label, actor, summary in steps %}
+                {% set current = loop.index %}
+                {% set is_done = current < step_index or swap.status in ['completed', 'refunded', 'canceled'] %}
+                {% set is_current = current == step_index and swap.status not in ['completed', 'refunded', 'canceled', 'disputed'] %}
+                <details class="rounded border p-3 {{ 'border-gfa-light bg-gfa-light/10 text-white' if is_current else ('border-green-400/40 bg-green-900/10 text-green-100' if is_done else 'border-gfa-grey/20 bg-black/20 text-gfa-grey') }}" {{ 'open' if is_current else '' }}>
+                    <summary class="cursor-pointer list-none">
+                        <p class="text-xs uppercase">
+                            Step {{ current }}
+                            {% if is_current %}
+                                <span class="ml-1 text-gfa-light">Current</span>
+                            {% elif is_done %}
+                                <span class="ml-1 text-green-300">Done</span>
+                            {% else %}
+                                <span class="ml-1 text-gfa-grey">Preview</span>
+                            {% endif %}
+                        </p>
+                        <p class="font-bold">{{ label }}</p>
+                    </summary>
+                    <p class="text-sm mt-2">Actor: <strong>{{ actor }}</strong></p>
+                    <p class="text-sm mt-1">{{ summary }}</p>
+                </details>
+            {% endfor %}
+        </div>
     </div>
 
     {% if next_step %}
-        <div class="bg-red-950/60 border border-red-500/60 rounded-lg p-5 text-red-50">
+        <div class="{{ 'bg-green-950/50 border-green-500/60 text-green-50' if next_step.user_id == user.id else 'bg-blue-950/50 border-blue-500/60 text-blue-50' }} border rounded-lg p-5">
             <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
                 <div>
-                    <p class="text-xs uppercase tracking-wide text-red-200">Action Required</p>
+                    <p class="text-xs uppercase tracking-wide {{ 'text-green-200' if next_step.user_id == user.id else 'text-blue-200' }}">
+                        {{ 'Your Current Step' if next_step.user_id == user.id else 'Waiting For Counterparty' }}
+                    </p>
                     <h2 class="text-2xl font-bold text-white mt-1">{{ next_step.title }}</h2>
-                    <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-red-100">
-                        <p class="rounded border border-red-400/30 bg-black/20 px-3 py-2">
+                    <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm {{ 'text-green-100' if next_step.user_id == user.id else 'text-blue-100' }}">
+                        <p class="rounded border {{ 'border-green-400/30' if next_step.user_id == user.id else 'border-blue-400/30' }} bg-black/20 px-3 py-2">
                             Next action: <strong>{{ next_step.role }} ({{ next_actor_user.username if next_actor_user else 'Unknown user' }})</strong>
                             {% if next_step.user_id == user.id %}
                                 <span class="font-bold text-white">Your turn</span>
                             {% endif %}
                         </p>
-                        <p class="rounded border border-red-400/30 bg-black/20 px-3 py-2">
+                        <p class="rounded border {{ 'border-green-400/30' if next_step.user_id == user.id else 'border-blue-400/30' }} bg-black/20 px-3 py-2">
                             You are: <strong>{{ current_swap_role }} ({{ user.username }})</strong>
                         </p>
                     </div>
-                    <ol class="list-decimal list-inside space-y-1 text-sm text-red-100 mt-3">
+                    <ol class="list-decimal list-inside space-y-1 text-sm {{ 'text-green-100' if next_step.user_id == user.id else 'text-blue-100' }} mt-3">
                         {% for instruction in next_step.instructions %}
                             <li>{{ instruction }}</li>
                         {% endfor %}
                     </ol>
                 </div>
-                <div class="rounded border border-red-400/40 bg-black/30 p-4 text-sm min-w-[240px]">
-                    <p class="text-red-200">Current step pending for</p>
+                <div class="rounded border {{ 'border-green-400/40' if next_step.user_id == user.id else 'border-blue-400/40' }} bg-black/30 p-4 text-sm min-w-[240px]">
+                    <p class="{{ 'text-green-200' if next_step.user_id == user.id else 'text-blue-200' }}">Current step pending for</p>
                     <p class="text-2xl font-bold text-white" data-countup-since="{{ pending_since.isoformat() }}Z">Calculating...</p>
-                    <p class="text-red-100 mt-2">
+                    <p class="{{ 'text-green-100' if next_step.user_id == user.id else 'text-blue-100' }} mt-2">
                         Reminder unlock:
                         <span data-countdown-to="{{ reminder_at.isoformat() }}Z">Calculating...</span>
                     </p>
-                    <p class="text-red-100 mt-2">
+                    <p class="{{ 'text-green-100' if next_step.user_id == user.id else 'text-blue-100' }} mt-2">
                         Stale action unlock:
                         <span data-countdown-to="{{ timeout_at.isoformat() }}Z">Calculating...</span>
                     </p>
-                    <p class="text-xs text-red-200 mt-2">
+                    <p class="text-xs {{ 'text-green-200' if next_step.user_id == user.id else 'text-blue-200' }} mt-2">
                         {% if funds_recorded %}
                             Funds appear to be in motion, so timeout leads to review instead of cancel.
                         {% else %}
@@ -120,7 +146,7 @@
                     </button>
                 </form>
             {% elif next_step and next_step.user_id != user.id and swap.status not in ['completed', 'refunded', 'canceled', 'disputed'] %}
-                <p class="mt-4 text-sm text-red-100">
+                <p class="mt-4 text-sm {{ 'text-green-100' if next_step.user_id == user.id else 'text-blue-100' }}">
                     Reminder button unlocks after {{ reminder_hours }} hours without progress.
                 </p>
             {% endif %}
@@ -375,7 +401,7 @@
         <div class="bg-black/30 p-6 rounded-lg">
             <h2 class="text-xl font-bold text-white mb-4">Next Action</h2>
 
-            {% if is_alice and swap.status in ['initiated', 'alice_locked'] %}
+            {% if is_alice and swap.status == 'initiated' %}
                 <form method="POST" action="{{ url_for('main.progress_swap', id=swap.id) }}" class="space-y-4">
                     <input type="hidden" name="action" value="post_alice_lock">
                     <div>
@@ -388,6 +414,11 @@
                     </div>
                     <button type="submit" class="bg-gfa-light text-gfa-dark font-bold py-2 px-5 rounded hover:bg-white transition">Record HNS Lock</button>
                 </form>
+            {% elif is_alice and swap.status == 'alice_locked' %}
+                <div class="rounded border border-blue-400/30 bg-blue-950/20 p-4 text-blue-100">
+                    <p class="font-bold text-white">Waiting for Bob</p>
+                    <p class="mt-1 text-sm">Your HNS lock is recorded. Bob now needs to verify it, lock BTC, and post the BTC lock TXID.</p>
+                </div>
             {% elif (not is_alice) and swap.status == 'alice_locked' %}
                 <form method="POST" action="{{ url_for('main.progress_swap', id=swap.id) }}" class="space-y-4">
                     <input type="hidden" name="action" value="post_bob_lock">
@@ -438,24 +469,30 @@
     {% endif %}
 
     {% if swap.status not in ['completed', 'refunded', 'canceled'] %}
-        <div class="bg-black/30 p-6 rounded-lg border border-red-500/30">
-            <h2 class="text-xl font-bold text-red-200 mb-3">Refund Path</h2>
-            <p class="text-sm text-red-100 mb-4">
-                Use this only after the applicable chain timelock has expired and your wallet has broadcast a valid refund transaction.
-            </p>
-            <form method="POST" action="{{ url_for('main.progress_swap', id=swap.id) }}" class="space-y-4">
+        <details class="bg-black/30 p-6 rounded-lg border border-red-500/30">
+            <summary class="cursor-pointer list-none">
+                <h2 class="text-xl font-bold text-red-200">Advanced Refund Controls</h2>
+                <p class="text-sm text-red-100 mt-2">
+                    Only open this after your wallet has broadcast a real refund transaction after the applicable timelock.
+                </p>
+            </summary>
+            <div class="mt-4 rounded border border-red-400/30 bg-red-950/20 p-4 text-sm text-red-100">
+                <p class="font-bold text-white">Do not paste the original lock TXID here.</p>
+                <p class="mt-1">A refund TXID must be a new on-chain refund transaction from your wallet. Recording a refund will move this swap to a final refunded state.</p>
+            </div>
+            <form method="POST" action="{{ url_for('main.progress_swap', id=swap.id) }}" class="space-y-4 mt-4" onsubmit="return confirm('Only continue if this is a real refund transaction, not a lock or claim TXID. Mark this swap refunded?')">
                 <input type="hidden" name="action" value="post_refund">
                 {% if is_alice %}
-                    <label class="block text-gfa-grey mb-1">HNS Refund TXID</label>
-                    <input type="text" name="alice_refund_txid" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white font-mono" placeholder="64-character transaction ID">
+                    <label class="block text-gfa-grey mb-1">New HNS Refund TXID</label>
+                    <input type="text" name="alice_refund_txid" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white font-mono" placeholder="64-character refund transaction ID">
                 {% else %}
-                    <label class="block text-gfa-grey mb-1">BTC Refund TXID</label>
-                    <input type="text" name="bob_refund_txid" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white font-mono" placeholder="64-character transaction ID">
+                    <label class="block text-gfa-grey mb-1">New BTC Refund TXID</label>
+                    <input type="text" name="bob_refund_txid" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white font-mono" placeholder="64-character refund transaction ID">
                 {% endif %}
                 <textarea name="note" rows="2" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white" placeholder="Refund reason or explorer link"></textarea>
                 <button type="submit" class="bg-red-700 text-white font-bold py-2 px-5 rounded hover:bg-red-600 transition">Record Refund</button>
             </form>
-        </div>
+        </details>
     {% endif %}
 
     {% if swap.status == 'canceled' %}

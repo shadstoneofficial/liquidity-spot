@@ -1922,8 +1922,8 @@ def progress_swap(id):
             if not _is_swap_alice(swap, user_id):
                 flash('Only Alice can post the HNS lock transaction.', 'error')
                 return redirect(url_for('main.swap_details', id=swap.id))
-            if swap.status not in ['initiated', 'alice_locked']:
-                flash('Alice can only post the HNS lock before Bob locks BTC.', 'error')
+            if swap.status != 'initiated':
+                flash('Alice has already recorded the HNS lock. The next step belongs to Bob.', 'error')
                 return redirect(url_for('main.swap_details', id=swap.id))
 
             txid = _clean_txid(request.form.get('alice_lock_txid'))
@@ -2000,12 +2000,18 @@ def progress_swap(id):
                 if not txid:
                     flash('Enter a valid 64-character HNS refund TXID.', 'error')
                     return redirect(url_for('main.swap_details', id=swap.id))
+                if txid in [swap.alice_lock_txid, swap.bob_lock_txid, swap.alice_claim_txid, swap.bob_claim_txid]:
+                    flash('Refund TXID must be a new refund transaction, not an already-recorded lock or claim TXID.', 'error')
+                    return redirect(url_for('main.swap_details', id=swap.id))
                 swap.alice_refund_txid = txid
                 swap.latest_note = note or 'Alice posted an HNS refund transaction.'
             else:
                 txid = _clean_txid(request.form.get('bob_refund_txid'))
                 if not txid:
                     flash('Enter a valid 64-character BTC refund TXID.', 'error')
+                    return redirect(url_for('main.swap_details', id=swap.id))
+                if txid in [swap.alice_lock_txid, swap.bob_lock_txid, swap.alice_claim_txid, swap.bob_claim_txid]:
+                    flash('Refund TXID must be a new refund transaction, not an already-recorded lock or claim TXID.', 'error')
                     return redirect(url_for('main.swap_details', id=swap.id))
                 swap.bob_refund_txid = txid
                 swap.latest_note = note or 'Bob posted a BTC refund transaction.'
