@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Page Not Found | Liquidity.spot{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+    <section class="relative overflow-hidden rounded-xl border border-gfa-grey/20 bg-black/40 p-8 md:p-12">
+        <div class="absolute inset-0 opacity-20">
+            <img src="{{ url_for('static', filename='img/liquidity-spot.png') }}" alt="" class="absolute -right-12 -top-12 h-56 w-56 object-contain">
+        </div>
+        <div class="relative max-w-3xl">
+            <div class="inline-flex items-center gap-2 rounded-full bg-gfa-light/20 px-3 py-1 text-sm font-bold text-gfa-light mb-5">
+                404
+            </div>
+            <h1 class="text-4xl md:text-5xl font-bold text-gfa-light mb-4">That page is not on Liquidity.spot.</h1>
+            <p class="text-xl text-white mb-4">
+                The link may have moved, the route may not be deployed yet, or the address may have a typo.
+            </p>
+            <p class="text-gfa-grey">
+                You can head back to the P2P board, read the tutorial, or visit the new open-source page and GitHub repo.
+            </p>
+            <div class="mt-8 flex flex-col sm:flex-row flex-wrap gap-3">
+                <a href="{{ url_for('main.index') }}" class="rounded bg-gfa-light px-5 py-3 text-center font-bold text-gfa-dark hover:bg-white transition">
+                    Go Home
+                </a>
+                <a href="{{ url_for('main.p2p') }}" class="rounded border border-gfa-light/30 px-5 py-3 text-center font-bold text-gfa-light hover:bg-gfa-light/10 transition">
+                    Open P2P Board
+                </a>
+                <a href="{{ url_for('main.opensource') }}" class="rounded border border-gfa-light/30 px-5 py-3 text-center font-bold text-gfa-light hover:bg-gfa-light/10 transition">
+                    Open Source Page
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <section class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <a href="{{ url_for('main.tutorial') }}" class="rounded-lg border border-gfa-grey/20 bg-black/30 p-5 hover:border-gfa-light/40 transition">
+            <h2 class="font-bold text-white mb-2">Tutorial</h2>
+            <p class="text-sm text-gfa-grey">Learn how Liquidity.spot coordinates non-custodial HNS/BTC trades.</p>
+        </a>
+        <a href="{{ url_for('main.orders') }}" class="rounded-lg border border-gfa-grey/20 bg-black/30 p-5 hover:border-gfa-light/40 transition">
+            <h2 class="font-bold text-white mb-2">Atomic Swaps</h2>
+            <p class="text-sm text-gfa-grey">Browse the experimental HTLC testing flow.</p>
+        </a>
+        <a href="https://github.com/shadstoneofficial/liquidity-spot" target="_blank" rel="noopener noreferrer" class="rounded-lg border border-gfa-grey/20 bg-black/30 p-5 hover:border-gfa-light/40 transition">
+            <h2 class="font-bold text-white mb-2">GitHub Repo</h2>
+            <p class="text-sm text-gfa-grey">Inspect the source, open an issue, or build on the project.</p>
+        </a>
+    </section>
+</div>
+{% endblock %}

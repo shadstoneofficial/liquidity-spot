@@ -1,4 +1,4 @@
-from flask import Flask, request, session, url_for
+from flask import Flask, jsonify, render_template, request, session, url_for
 from config import config
 from models import db
 from datetime import datetime, timedelta
@@ -31,6 +31,12 @@ def create_app(config_name='default'):
             response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
             response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
         return response
+
+    @app.errorhandler(404)
+    def not_found(error):
+        if request.path.startswith('/api/'):
+            return jsonify({'error': 'Not found'}), 404
+        return render_template('404.html'), 404
 
     @app.context_processor
     def inject_nav_notifications():
