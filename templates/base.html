@@ -49,6 +49,7 @@
                     </div>
                 </div>
                 <a href="{{ url_for('main.tutorial') }}" class="hover:text-gfa-light">Tutorial</a>
+                <a href="{{ url_for('main.opensource') }}" class="hover:text-gfa-light">Open Source</a>
                 {% if session.get('user_id') %}
                     <a href="{{ url_for('main.dashboard') }}" class="hover:text-gfa-light">Dashboard</a>
                     {% if session.get('tier') == 'team' %}
@@ -133,6 +134,7 @@
                 <a href="{{ url_for('main.p2p') }}" class="hover:text-gfa-light">P2P</a>
                 <a href="{{ url_for('main.orders') }}" class="hover:text-gfa-light">Atomic Swaps (Experimental)</a>
                 <a href="{{ url_for('main.tutorial') }}" class="hover:text-gfa-light">Tutorial</a>
+                <a href="{{ url_for('main.opensource') }}" class="hover:text-gfa-light">Open Source</a>
                 {% if session.get('user_id') %}
                     {% if session.get('tier') == 'team' %}
                         <a href="{{ url_for('admin.credit') }}" class="hover:text-gfa-light">Admin</a>
@@ -244,6 +246,7 @@
                 <a href="{{ url_for('main.p2p') }}" class="hover:text-gfa-light">P2P</a>
                 <a href="{{ url_for('main.orders') }}" class="hover:text-gfa-light">Atomic Swaps</a>
                 <a href="{{ url_for('main.tutorial') }}" class="hover:text-gfa-light">Tutorial</a>
+                <a href="{{ url_for('main.opensource') }}" class="hover:text-gfa-light">Open Source</a>
                 {% if session.get('user_id') %}
                     {% if session.get('tier') == 'team' %}
                         <a href="{{ url_for('admin.credit') }}" class="hover:text-gfa-light">Admin</a>

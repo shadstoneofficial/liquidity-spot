@@ -68,4 +68,24 @@
         </div>
     </div>
 </div>
+
+<div class="max-w-5xl mx-auto mt-8 bg-black/30 border border-gfa-grey/20 rounded-lg p-6">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+            <p class="text-xs uppercase tracking-wide text-gfa-light font-bold mb-2">Open Source</p>
+            <h2 class="text-2xl font-bold text-white mb-2">Build with us.</h2>
+            <p class="text-gfa-grey max-w-3xl">
+                Liquidity.spot is open source so the community can inspect the code, contribute safety improvements, and build new Handshake liquidity tools from the same foundation.
+            </p>
+        </div>
+        <div class="flex flex-col sm:flex-row md:flex-col gap-2 md:min-w-52">
+            <a href="{{ url_for('main.opensource') }}" class="rounded bg-gfa-light px-4 py-2 text-center font-bold text-gfa-dark hover:bg-white transition">
+                Open Source Page
+            </a>
+            <a href="https://github.com/shadstoneofficial/liquidity-spot" target="_blank" rel="noopener noreferrer" class="rounded border border-gfa-light/30 px-4 py-2 text-center font-bold text-gfa-light hover:bg-gfa-light/10 transition">
+                GitHub Repo
+            </a>
+        </div>
+    </div>
+</div>
 {% endblock %}

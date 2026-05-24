@@ -1338,6 +1338,10 @@ def cancel_p2p_offer(offer_id):
 def index():
     return render_template('index.html')
 
+@main_bp.route('/opensource')
+def opensource():
+    return render_template('opensource.html')
+
 @main_bp.route('/dashboard')
 @login_required
 def dashboard():

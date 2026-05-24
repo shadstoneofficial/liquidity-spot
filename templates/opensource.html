@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}Open Source | Liquidity.spot{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-8">
+    <section class="bg-black/30 border border-gfa-grey/20 rounded-lg p-8">
+        <div class="inline-flex items-center gap-2 bg-gfa-light/20 text-gfa-light text-sm font-bold px-3 py-1 rounded-full mb-4">
+            Open Source
+        </div>
+        <h1 class="text-4xl md:text-5xl font-bold text-gfa-light mb-4">Liquidity.spot is open source.</h1>
+        <p class="text-xl text-white max-w-3xl">
+            We are building Liquidity.spot in public so the Handshake community can inspect it, improve it, and build new non-custodial liquidity tools on top of it.
+        </p>
+        <div class="flex flex-col sm:flex-row gap-3 mt-8">
+            <a href="https://github.com/shadstoneofficial/liquidity-spot" target="_blank" rel="noopener noreferrer" class="inline-flex justify-center rounded bg-gfa-light px-6 py-3 font-bold text-gfa-dark hover:bg-white transition">
+                View GitHub Repo
+            </a>
+            <a href="{{ url_for('main.tutorial') }}" class="inline-flex justify-center rounded border border-gfa-light/30 px-6 py-3 font-bold text-gfa-light hover:bg-gfa-light/10 transition">
+                Read The Tutorial
+            </a>
+        </div>
+    </section>
+
+    <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-black/30 border border-gfa-grey/20 rounded-lg p-6">
+            <h2 class="text-xl font-bold text-white mb-3">Inspect The Flow</h2>
+            <p class="text-gfa-grey">
+                Review how offers, trade rooms, callbacks, and experimental atomic-swap screens work before trusting them with real coordination.
+            </p>
+        </div>
+        <div class="bg-black/30 border border-gfa-grey/20 rounded-lg p-6">
+            <h2 class="text-xl font-bold text-white mb-3">Contribute Safely</h2>
+            <p class="text-gfa-grey">
+                Small, focused improvements to docs, guest-mode UX, trade safety copy, tests, and wallet helper interfaces are especially welcome.
+            </p>
+        </div>
+        <div class="bg-black/30 border border-gfa-grey/20 rounded-lg p-6">
+            <h2 class="text-xl font-bold text-white mb-3">Build On It</h2>
+            <p class="text-gfa-grey">
+                Fork the project, adapt it for new liquidity flows, or use the patterns here as a starting point for other Handshake coordination tools.
+            </p>
+        </div>
+    </section>
+
+    <section class="bg-black/30 border border-gfa-grey/20 rounded-lg p-8">
+        <h2 class="text-2xl font-bold text-white mb-4">What We Want Help With</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-gfa-grey">
+            <div class="rounded border border-gfa-grey/10 bg-black/20 p-4">
+                <h3 class="font-bold text-white mb-2">P2P trade safety</h3>
+                <p>Clearer milestones, better warnings, stronger dispute context, and less room for user error.</p>
+            </div>
+            <div class="rounded border border-gfa-grey/10 bg-black/20 p-4">
+                <h3 class="font-bold text-white mb-2">Wallet integrations</h3>
+                <p>Conservative helpers for Bob Wallet and Bitcoin wallets that never request seeds, private keys, or wallet passwords.</p>
+            </div>
+            <div class="rounded border border-gfa-grey/10 bg-black/20 p-4">
+                <h3 class="font-bold text-white mb-2">Testing and review</h3>
+                <p>Regression tests around offer creation, trade state changes, guest accounts, and experimental swap callbacks.</p>
+            </div>
+            <div class="rounded border border-gfa-grey/10 bg-black/20 p-4">
+                <h3 class="font-bold text-white mb-2">Docs for builders</h3>
+                <p>Setup guides, API notes, deployment notes, and examples that make it easier for contributors to get moving.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-6 text-yellow-100">
+        <h2 class="text-xl font-bold text-white mb-2">Experimental Software</h2>
+        <p>
+            Liquidity.spot is a coordination layer, not a custodian. The project is early, and users should independently verify counterparties, addresses, transaction IDs, and settlement before releasing any asset.
+        </p>
+    </section>
+</div>
+{% endblock %}
