@@ -43,6 +43,12 @@
             <div class="hidden md:flex items-center gap-6">
                 <a href="{{ url_for('main.p2p') }}" class="hover:text-gfa-light">P2P</a>
                 <div class="group relative">
+                    <a href="{{ url_for('main.maker_mode') }}" class="hover:text-gfa-light">Maker Mode</a>
+                    <div class="pointer-events-none absolute left-1/2 top-full z-50 mt-2 hidden w-64 -translate-x-1/2 rounded-lg border border-gfa-light/30 bg-black/95 p-3 text-xs text-gfa-light shadow-xl group-hover:block">
+                        Standing offer concept for repeat makers. No custody and no pooled funds.
+                    </div>
+                </div>
+                <div class="group relative">
                     <a href="{{ url_for('main.orders') }}" class="hover:text-gfa-light">Atomic Swaps</a>
                     <div class="pointer-events-none absolute left-1/2 top-full z-50 mt-2 hidden w-56 -translate-x-1/2 rounded-lg border border-yellow-500/30 bg-black/95 p-3 text-xs text-yellow-100 shadow-xl group-hover:block">
                         Experimental HTLC testing flow. Browse without login; sign in only to post or accept test orders.
@@ -132,6 +138,7 @@
                     {% endif %}
                 {% endif %}
                 <a href="{{ url_for('main.p2p') }}" class="hover:text-gfa-light">P2P</a>
+                <a href="{{ url_for('main.maker_mode') }}" class="hover:text-gfa-light">Maker Mode</a>
                 <a href="{{ url_for('main.orders') }}" class="hover:text-gfa-light">Atomic Swaps (Experimental)</a>
                 <a href="{{ url_for('main.tutorial') }}" class="hover:text-gfa-light">Tutorial</a>
                 <a href="{{ url_for('main.opensource') }}" class="hover:text-gfa-light">Open Source</a>
@@ -206,6 +213,9 @@
                         <a href="{{ url_for('main.swaps_index') }}" class="rounded bg-gfa-light px-3 py-1.5 text-sm font-bold text-gfa-dark hover:bg-white transition">
                             View Atomic Swaps
                         </a>
+                        <a href="{{ url_for('main.maker_mode') }}" class="rounded border border-gfa-light/30 px-3 py-1.5 text-sm font-bold text-gfa-light hover:bg-gfa-light/10 transition">
+                            View Maker Mode
+                        </a>
                         <a href="{{ url_for('main.p2p') }}" class="rounded border border-gfa-light/30 px-3 py-1.5 text-sm font-bold text-gfa-light hover:bg-gfa-light/10 transition">
                             View P2P
                         </a>
@@ -244,6 +254,7 @@
                     {% endif %}
                 {% endif %}
                 <a href="{{ url_for('main.p2p') }}" class="hover:text-gfa-light">P2P</a>
+                <a href="{{ url_for('main.maker_mode') }}" class="hover:text-gfa-light">Maker Mode</a>
                 <a href="{{ url_for('main.orders') }}" class="hover:text-gfa-light">Atomic Swaps</a>
                 <a href="{{ url_for('main.tutorial') }}" class="hover:text-gfa-light">Tutorial</a>
                 <a href="{{ url_for('main.opensource') }}" class="hover:text-gfa-light">Open Source</a>

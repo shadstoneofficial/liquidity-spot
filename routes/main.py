@@ -134,6 +134,19 @@ def _hash_secret(secret):
     return hashlib.sha256(bytes.fromhex(secret)).hexdigest()
 
 
+def _current_hns_btc_price():
+    try:
+        response = requests.get(
+            'https://api.coingecko.com/api/v3/simple/price?ids=handshake&vs_currencies=btc',
+            timeout=8,
+        )
+        if response.status_code == 200:
+            return response.json().get('handshake', {}).get('btc', 0.000000500000)
+    except Exception as e:
+        print(f"CoinGecko API Error: {e}")
+    return 0.000000500000
+
+
 def _swap_participants(swap):
     return {swap.order.user_id, swap.matcher_id}
 
@@ -883,6 +896,7 @@ def api_liquidity_channel():
         'links': {
             'home': _external_url_for('main.p2p'),
             'p2p': _external_url_for('main.p2p'),
+            'maker_mode': _external_url_for('main.maker_mode'),
             'atomic_orders': _external_url_for('main.orders'),
             'bob_download': 'https://bobwallet.org/download',
         },
@@ -934,15 +948,7 @@ def tutorial():
 def p2p():
     offers = P2POffer.query.filter_by(status='open').order_by(P2POffer.created_at.desc()).all()
     my_trades = []
-    try:
-        response = requests.get('https://api.coingecko.com/api/v3/simple/price?ids=handshake&vs_currencies=btc')
-        if response.status_code == 200:
-            current_price = response.json().get('handshake', {}).get('btc', 0.000000500000)
-        else:
-            current_price = 0.000000500000
-    except Exception as e:
-        print(f"CoinGecko API Error: {e}")
-        current_price = 0.000000500000
+    current_price = _current_hns_btc_price()
 
     if session.get('user_id'):
         my_trades = P2PTrade.query.filter(
@@ -951,6 +957,24 @@ def p2p():
         ).order_by(P2PTrade.updated_at.desc()).all()
 
     return render_template('p2p.html', offers=offers, my_trades=my_trades, current_price=current_price)
+
+
+@main_bp.route('/maker-mode')
+def maker_mode():
+    current_price = _current_hns_btc_price()
+    open_p2p_offers = P2POffer.query.filter_by(status='open').count()
+    open_atomic_orders = Order.query.filter_by(status='open').count()
+    active_p2p_trades = P2PTrade.query.filter(
+        P2PTrade.status.notin_(['completed', 'canceled', 'disputed', 'no_show'])
+    ).count()
+
+    return render_template(
+        'maker_mode.html',
+        current_price=current_price,
+        open_p2p_offers=open_p2p_offers,
+        open_atomic_orders=open_atomic_orders,
+        active_p2p_trades=active_p2p_trades,
+    )
 
 @main_bp.route('/p2p/offers', methods=['POST'])
 def create_p2p_offer():
@@ -1547,17 +1571,7 @@ def orders():
             flash('Error creating order. Please check the details and try again.', 'error')
 
     orders = Order.query.filter_by(status='open').order_by(Order.created_at.desc()).all()
-    
-    # Get current HNS price in BTC
-    try:
-        response = requests.get('https://api.coingecko.com/api/v3/simple/price?ids=handshake&vs_currencies=btc')
-        if response.status_code == 200:
-            current_price = response.json().get('handshake', {}).get('btc', 0.000000500000)
-        else:
-            current_price = 0.000000500000
-    except Exception as e:
-        print(f"CoinGecko API Error: {e}")
-        current_price = 0.000000500000
+    current_price = _current_hns_btc_price()
         
     return render_template('orders.html', orders=orders, current_price=current_price)
 

@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block title %}Maker Mode | Liquidity.spot{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-8">
+    <div class="bg-black/30 p-6 rounded-lg border border-gfa-grey/20">
+        <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
+            <div class="max-w-3xl">
+                <div class="inline-flex items-center gap-2 bg-gfa-light/20 text-gfa-light text-sm font-bold px-3 py-1 rounded-full mb-3">
+                    Standing Offers
+                </div>
+                <h1 class="text-4xl font-bold text-gfa-light">Maker Mode</h1>
+                <p class="text-gfa-grey mt-3">
+                    Maker Mode is the planned path for repeat liquidity providers who want to post standing HNS/BTC availability without asking both parties to arrange a live swap from scratch.
+                </p>
+            </div>
+            <div class="rounded-lg border border-yellow-500/30 bg-yellow-900/20 p-4 text-sm text-yellow-100 lg:max-w-sm">
+                <p class="font-bold text-yellow-200">Preview skeleton</p>
+                <p class="mt-1">No funds are pooled here. Makers will keep keys in their own wallets or local agents; Liquidity.spot only coordinates terms, reservations, notifications, and public TXIDs.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-black/30 p-5 rounded-lg border border-gfa-grey/20">
+            <p class="text-sm uppercase tracking-wide text-gfa-grey">Open P2P Offers</p>
+            <p class="mt-2 text-3xl font-bold text-white">{{ open_p2p_offers }}</p>
+            <a href="{{ url_for('main.p2p') }}" class="mt-3 inline-block text-sm font-bold text-gfa-light hover:text-white">View P2P board</a>
+        </div>
+        <div class="bg-black/30 p-5 rounded-lg border border-gfa-grey/20">
+            <p class="text-sm uppercase tracking-wide text-gfa-grey">Open Atomic Orders</p>
+            <p class="mt-2 text-3xl font-bold text-white">{{ open_atomic_orders }}</p>
+            <a href="{{ url_for('main.orders') }}" class="mt-3 inline-block text-sm font-bold text-gfa-light hover:text-white">View atomic testing</a>
+        </div>
+        <div class="bg-black/30 p-5 rounded-lg border border-gfa-grey/20">
+            <p class="text-sm uppercase tracking-wide text-gfa-grey">Active P2P Trades</p>
+            <p class="mt-2 text-3xl font-bold text-white">{{ active_p2p_trades }}</p>
+            <a href="{{ url_for('main.dashboard') }}" class="mt-3 inline-block text-sm font-bold text-gfa-light hover:text-white">Open dashboard</a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-5 gap-6">
+        <div class="xl:col-span-2 bg-black/30 p-6 rounded-lg border border-gfa-grey/20">
+            <div class="flex items-start justify-between gap-4 mb-5">
+                <div>
+                    <h2 class="text-2xl font-bold text-white">Draft Standing Offer</h2>
+                    <p class="text-sm text-gfa-grey mt-1">A future maker listing would define availability, size limits, and response expectations before a taker reserves it.</p>
+                </div>
+                <span class="rounded bg-white/10 px-2 py-1 text-xs font-bold text-gfa-grey">Preview</span>
+            </div>
+
+            <form class="space-y-4" onsubmit="return false">
+                <div>
+                    <label class="block text-gfa-grey mb-1">Maker Side</label>
+                    <select disabled class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white opacity-80">
+                        <option>Sell HNS for BTC</option>
+                        <option>Buy HNS with BTC</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gfa-grey mb-1">Minimum Fill</label>
+                        <input disabled type="number" value="250" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white opacity-80">
+                    </div>
+                    <div>
+                        <label class="block text-gfa-grey mb-1">Maximum Fill</label>
+                        <input disabled type="number" value="5000" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white opacity-80">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-gfa-grey mb-1">Price (BTC per HNS)</label>
+                    <input disabled type="text" value="{{ '%.12f'|format(current_price) }}" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white opacity-80">
+                    <p class="text-xs text-gfa-grey mt-1">Current market reference: <span class="font-mono">{{ '%.12f'|format(current_price) }}</span></p>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gfa-grey mb-1">Reservation Window</label>
+                        <select disabled class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white opacity-80">
+                            <option>15 minutes</option>
+                            <option>30 minutes</option>
+                            <option>1 hour</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-gfa-grey mb-1">Availability</label>
+                        <select disabled class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white opacity-80">
+                            <option>Manual confirmation</option>
+                            <option>Notify me in Bob Wallet</option>
+                            <option>Local agent policy</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-gfa-grey mb-1">Maker Notes</label>
+                    <textarea disabled rows="4" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white opacity-80">Example: available most evenings Asia/Bangkok, small fills preferred, wait for standard confirmations.</textarea>
+                </div>
+                <button disabled class="w-full cursor-not-allowed rounded bg-gfa-grey/30 py-2 font-bold text-gfa-grey">
+                    Standing Offer Publishing Coming Soon
+                </button>
+            </form>
+        </div>
+
+        <div class="xl:col-span-3 space-y-6">
+            <div class="bg-black/30 p-6 rounded-lg border border-gfa-grey/20">
+                <h2 class="text-2xl font-bold text-white mb-4">How This Should Work</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="rounded border border-gfa-grey/20 bg-black/20 p-4">
+                        <p class="font-bold text-gfa-light">1. Maker posts availability</p>
+                        <p class="text-sm text-gfa-grey mt-2">The listing states side, min/max fill, price rule, response window, confirmation policy, and whether a local agent is watching.</p>
+                    </div>
+                    <div class="rounded border border-gfa-grey/20 bg-black/20 p-4">
+                        <p class="font-bold text-gfa-light">2. Taker reserves terms</p>
+                        <p class="text-sm text-gfa-grey mt-2">The selected size is reserved briefly. The maker is notified before any wallet action is required.</p>
+                    </div>
+                    <div class="rounded border border-gfa-grey/20 bg-black/20 p-4">
+                        <p class="font-bold text-gfa-light">3. Room opens</p>
+                        <p class="text-sm text-gfa-grey mt-2">The parties continue in a P2P room or an atomic swap room, depending on the offer's settlement mode.</p>
+                    </div>
+                    <div class="rounded border border-gfa-grey/20 bg-black/20 p-4">
+                        <p class="font-bold text-gfa-light">4. Wallets sign locally</p>
+                        <p class="text-sm text-gfa-grey mt-2">Bob Wallet and BTC wallets show exact terms before signing. Liquidity.spot records public progress only.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-black/30 p-6 rounded-lg border border-gfa-grey/20">
+                <h2 class="text-2xl font-bold text-white mb-4">Settlement Options</h2>
+                <div class="space-y-3">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded border border-gfa-grey/20 bg-black/20 p-4">
+                        <div>
+                            <p class="font-bold text-white">Human P2P room</p>
+                            <p class="text-sm text-gfa-grey">Best available path today for lower-friction coordination and record keeping.</p>
+                        </div>
+                        <a href="{{ url_for('main.p2p') }}" class="rounded bg-gfa-light px-4 py-2 text-center text-sm font-bold text-gfa-dark hover:bg-white transition">Use P2P</a>
+                    </div>
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded border border-yellow-500/30 bg-yellow-900/10 p-4">
+                        <div>
+                            <p class="font-bold text-white">Atomic swap room</p>
+                            <p class="text-sm text-gfa-grey">Power-user trustless path. Best after Bob Wallet HNS HTLC actions are proven.</p>
+                        </div>
+                        <a href="{{ url_for('main.orders') }}" class="rounded border border-yellow-500/40 px-4 py-2 text-center text-sm font-bold text-yellow-100 hover:bg-yellow-900/30 transition">View Alpha</a>
+                    </div>
+                    <div class="rounded border border-blue-500/30 bg-blue-900/10 p-4">
+                        <p class="font-bold text-white">Local liquidity agent</p>
+                        <p class="text-sm text-gfa-grey mt-1">Future path for makers who want near-instant fills while keeping keys on their own machine under strict policy limits.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-black/30 p-6 rounded-lg border border-gfa-grey/20">
+                <h2 class="text-2xl font-bold text-white mb-4">Build Checklist</h2>
+                <ol class="list-decimal list-inside text-gfa-grey space-y-2">
+                    <li>Add a standing-offer model with side, min/max size, price rule, availability, reservation window, and settlement mode.</li>
+                    <li>Add reservation state so takers can hold an offer briefly without pretending funds are locked.</li>
+                    <li>Send maker notifications through Bob Wallet, email, Telegram, or the dashboard.</li>
+                    <li>Convert accepted reservations into P2P rooms first, then atomic swap rooms after the wallet-assisted flow is proven.</li>
+                    <li>Add local agent policies only after manual maker mode has real usage data.</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
