@@ -112,34 +112,52 @@ def rotate_guest_recovery():
 def login_gfavip():
     service_name = current_app.config.get('GFAVIP_SERVICE_NAME', 'liquidity-spot')
     redirect_uri = current_app.config.get('REDIRECT_URI', 'http://localhost:8000/callback')
-    sso_url = f"https://wallet.gfavip.com/api/auth/sso/authorize?redirect_uri={redirect_uri}&service={service_name}"
+    sso_url = f"https://wallet.gfavip.com/api/auth/sso/authorize?redirect_uri={redirect_uri}&service={service_name}&flow=code"
     return redirect(sso_url)
 
 @auth_bp.route('/callback')
 def callback():
-    user_id = request.args.get('user_id')
-    email = request.args.get('email')
-    username = request.args.get('username')
-    token = request.args.get('token')
-    tier = request.args.get('tier')
-    credits = request.args.get('credits')
+    code = request.args.get('code')
 
-    if not all([user_id, token]):
+    if not code:
         flash('Authentication failed: Missing required parameters.', 'error')
         return redirect(url_for('main.index'))
 
-    # Validate token
-    validate_url = "https://wallet.gfavip.com/api/auth/validate"
-    headers = {'Authorization': f'Bearer {token}'}
-    
+    # Exchange the one-time code for verified identity. Fail closed on any
+    # network error, non-200 response, non-JSON body, non-dict payload, or
+    # missing user_id -- never trust identity data from the query string.
+    exchange_url = "https://wallet.gfavip.com/api/auth/sso/exchange"
+
     try:
-        response = requests.get(validate_url, headers=headers)
-        if response.status_code != 200:
-            flash('Authentication failed: Invalid token.', 'error')
-            return redirect(url_for('main.index'))
+        response = requests.post(exchange_url, json={'code': code}, timeout=5)
     except requests.RequestException:
         flash('Authentication failed: Validation service unavailable.', 'error')
         return redirect(url_for('main.index'))
+
+    if response.status_code != 200:
+        flash('Authentication failed: Invalid code.', 'error')
+        return redirect(url_for('main.index'))
+
+    try:
+        body = response.json()
+    except ValueError:
+        flash('Authentication failed: Invalid response from validation service.', 'error')
+        return redirect(url_for('main.index'))
+
+    if not isinstance(body, dict):
+        flash('Authentication failed: Invalid response from validation service.', 'error')
+        return redirect(url_for('main.index'))
+
+    user_id = body.get('user_id')
+    if not user_id:
+        flash('Authentication failed: Invalid response from validation service.', 'error')
+        return redirect(url_for('main.index'))
+
+    email = body.get('email')
+    username = body.get('username')
+    tier = body.get('tier')
+    credits = body.get('credits')
+    token = body.get('token')
 
     # Create or Update User
     user = User.query.get(user_id)
