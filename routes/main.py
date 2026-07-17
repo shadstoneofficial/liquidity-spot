@@ -6,7 +6,7 @@ import secrets
 import hashlib
 import requests
 import re
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from datetime import datetime, timedelta
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
@@ -268,6 +268,40 @@ def _app_base_url():
 
 def _external_url_for(endpoint, **values):
     return url_for(endpoint, _external=True, _scheme=_external_scheme(), **values)
+
+
+def _p2p_offer_context(offer):
+    total_btc = Decimal(offer.amount_hns) * Decimal(offer.price_btc_per_hns)
+    total_sats = (total_btc * Decimal('100000000')).quantize(
+        Decimal('1'), rounding=ROUND_HALF_UP
+    )
+
+    if offer.side == 'buy':
+        return {
+            'creator_role': 'HNS buyer',
+            'counterparty_role': 'HNS seller',
+            'waiting_label': 'Waiting for an HNS seller',
+            'action_label': 'Sell HNS to this buyer',
+            'counterparty_explanation': (
+                'The offer creator has BTC and wants HNS. Another person with HNS '
+                'must accept this offer before a swap can begin.'
+            ),
+            'total_btc': total_btc,
+            'total_sats': total_sats,
+        }
+
+    return {
+        'creator_role': 'HNS seller',
+        'counterparty_role': 'HNS buyer',
+        'waiting_label': 'Waiting for an HNS buyer',
+        'action_label': 'Buy HNS from this seller',
+        'counterparty_explanation': (
+            'The offer creator has HNS and wants BTC. Another person with BTC '
+            'must accept this offer before a swap can begin.'
+        ),
+        'total_btc': total_btc,
+        'total_sats': total_sats,
+    }
 
 
 def _swap_public_payload(swap):
@@ -956,7 +990,31 @@ def p2p():
             (P2PTrade.counterparty_id == session['user_id'])
         ).order_by(P2PTrade.updated_at.desc()).all()
 
-    return render_template('p2p.html', offers=offers, my_trades=my_trades, current_price=current_price)
+    offer_contexts = {offer.id: _p2p_offer_context(offer) for offer in offers}
+    return render_template(
+        'p2p.html',
+        offers=offers,
+        offer_contexts=offer_contexts,
+        my_trades=my_trades,
+        current_price=current_price,
+    )
+
+
+@main_bp.route('/p2p/offers/<int:offer_id>')
+def p2p_offer_details(offer_id):
+    offer = P2POffer.query.get_or_404(offer_id)
+    trade = offer.trade[0] if offer.trade else None
+    return render_template(
+        'p2p_offer.html',
+        offer=offer,
+        offer_context=_p2p_offer_context(offer),
+        trade=trade,
+        is_creator=session.get('user_id') == offer.creator_id,
+        is_participant=bool(
+            trade and session.get('user_id') in [trade.creator_id, trade.counterparty_id]
+        ),
+        share_url=_external_url_for('main.p2p_offer_details', offer_id=offer.id),
+    )
 
 
 @main_bp.route('/maker-mode')
@@ -1010,7 +1068,13 @@ def create_p2p_offer():
         )
         db.session.add(offer)
         db.session.commit()
-        flash('P2P offer created successfully.', 'success')
+        offer_context = _p2p_offer_context(offer)
+        flash(
+            f"Offer #{offer.id} is live. {offer_context['waiting_label']}. "
+            'Share this page with someone who can take the other side.',
+            'success'
+        )
+        return redirect(url_for('main.p2p_offer_details', offer_id=offer.id))
     except (InvalidOperation, ValueError) as exc:
         db.session.rollback()
         flash(f'Error creating P2P offer: {exc}', 'error')

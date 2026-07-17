@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}Offer #{{ offer.id }}: {{ offer.amount_hns }} HNS | Liquidity.spot{% endblock %}
+
+{% block meta %}
+<meta name="description" content="{{ offer_context.waiting_label }} for a {{ offer.amount_hns }} HNS peer-to-peer trade on Liquidity.spot.">
+<meta property="og:title" content="{{ offer_context.waiting_label }}: {{ offer.amount_hns }} HNS">
+<meta property="og:description" content="{{ offer_context.counterparty_explanation }}">
+<meta property="og:type" content="website">
+<meta property="og:url" content="{{ share_url }}">
+{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-4xl space-y-6">
+    <nav class="text-sm text-gfa-grey" aria-label="Breadcrumb">
+        <a href="{{ url_for('main.p2p') }}" class="hover:text-gfa-light">P2P offers</a>
+        <span aria-hidden="true"> / </span>
+        <span>Offer #{{ offer.id }}</span>
+    </nav>
+
+    <section class="rounded-xl border {{ 'border-gfa-light/40' if offer.status == 'open' else 'border-gfa-grey/20' }} bg-black/35 p-6 md:p-8">
+        <div class="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+            <div>
+                <p class="text-sm font-bold uppercase tracking-wide {{ 'text-yellow-200' if offer.status == 'open' else 'text-gfa-grey' }}">
+                    {{ offer_context.waiting_label if offer.status == 'open' else 'Offer ' + offer.status }}
+                </p>
+                <h1 class="mt-2 text-3xl font-bold text-white md:text-4xl">{{ offer.amount_hns }} HNS</h1>
+                <p class="mt-2 text-lg text-gfa-grey">Posted by {{ offer.creator.username }}, the {{ offer_context.creator_role }}.</p>
+            </div>
+            <span class="w-fit rounded-full px-3 py-1 text-sm font-bold {{ 'bg-gfa-light/20 text-gfa-light' if offer.status == 'open' else 'bg-gfa-grey/10 text-gfa-grey' }}">
+                {{ offer.status|upper }}
+            </span>
+        </div>
+
+        {% if offer.status == 'open' %}
+        <div class="mt-6 rounded-lg border border-yellow-500/30 bg-yellow-900/20 p-4 text-yellow-50">
+            <p class="font-bold">Someone else must take the other side before this swap can start.</p>
+            <p class="mt-1 text-sm text-yellow-100">{{ offer_context.counterparty_explanation }}</p>
+        </div>
+        {% endif %}
+
+        <dl class="mt-6 grid gap-4 rounded-lg border border-gfa-grey/15 bg-black/30 p-5 sm:grid-cols-2">
+            <div>
+                <dt class="text-xs uppercase tracking-wide text-gfa-grey">Offer creator wants to</dt>
+                <dd class="mt-1 font-bold text-white">{{ 'Buy HNS with BTC' if offer.side == 'buy' else 'Sell HNS for BTC' }}</dd>
+            </div>
+            <div>
+                <dt class="text-xs uppercase tracking-wide text-gfa-grey">Counterparty needed</dt>
+                <dd class="mt-1 font-bold text-white">{{ offer_context.counterparty_role }}</dd>
+            </div>
+            <div>
+                <dt class="text-xs uppercase tracking-wide text-gfa-grey">Rate</dt>
+                <dd class="mt-1 font-mono text-white">{{ '%.12f'|format(offer.price_btc_per_hns) }} BTC/HNS</dd>
+            </div>
+            <div>
+                <dt class="text-xs uppercase tracking-wide text-gfa-grey">Quoted total</dt>
+                <dd class="mt-1 font-mono text-white">{{ '%.12f'|format(offer_context.total_btc) }} BTC</dd>
+                <p class="mt-1 text-xs text-gfa-grey">Approximately {{ '{:,}'.format(offer_context.total_sats|int) }} sats; confirm the whole-satoshi total in the trade room.</p>
+            </div>
+            <div>
+                <dt class="text-xs uppercase tracking-wide text-gfa-grey">Settlement</dt>
+                <dd class="mt-1 text-white">{{ offer.payment_method }}</dd>
+            </div>
+            <div>
+                <dt class="text-xs uppercase tracking-wide text-gfa-grey">Gems bond</dt>
+                <dd class="mt-1 text-white">{{ offer.gems_stake or 0 }} 💎</dd>
+            </div>
+        </dl>
+
+        {% if offer.notes %}
+        <div class="mt-6">
+            <h2 class="text-sm font-bold uppercase tracking-wide text-gfa-grey">Offer note</h2>
+            <p class="mt-2 whitespace-pre-wrap rounded-lg border border-gfa-grey/15 bg-black/30 p-4 text-white">{{ offer.notes }}</p>
+        </div>
+        {% endif %}
+
+        <div class="mt-6 space-y-4">
+            {% if offer.status == 'open' and is_creator %}
+                <div class="rounded-lg border border-gfa-light/30 bg-gfa-light/10 p-4">
+                    <p class="font-bold text-white">Your offer is live, but it has not been matched yet.</p>
+                    <p class="mt-1 text-sm text-gfa-grey">Share this permalink with an {{ offer_context.counterparty_role }}. They can open it and accept without a GFAVIP account.</p>
+                </div>
+            {% elif offer.status == 'open' %}
+                <form method="POST" action="{{ url_for('main.accept_p2p_offer', offer_id=offer.id) }}" onsubmit="return window.confirm('Accept offer #{{ offer.id }} and open a shared trade room? Do not send funds until both sides confirm the next step there.')">
+                    <button type="submit" class="w-full rounded-lg bg-gfa-light px-5 py-3 text-lg font-bold text-gfa-dark hover:bg-white">
+                        {{ offer_context.action_label }}
+                    </button>
+                    <p class="mt-2 text-center text-xs text-gfa-grey">Accepting creates a shared coordination room. It does not automatically move BTC or HNS.</p>
+                </form>
+            {% elif trade and is_participant %}
+                <a href="{{ url_for('main.p2p_trade_room', trade_id=trade.id) }}" class="block w-full rounded-lg bg-gfa-light px-5 py-3 text-center text-lg font-bold text-gfa-dark hover:bg-white">Enter Trade Room</a>
+            {% elif trade %}
+                <p class="rounded-lg border border-gfa-grey/20 bg-black/30 p-4 text-center text-gfa-grey">This offer has already been matched.</p>
+            {% else %}
+                <p class="rounded-lg border border-gfa-grey/20 bg-black/30 p-4 text-center text-gfa-grey">This offer is no longer open.</p>
+            {% endif %}
+
+            <div class="rounded-lg border border-gfa-grey/20 bg-black/30 p-4">
+                <label for="offer-share-url" class="text-sm font-bold text-white">Shareable offer permalink</label>
+                <div class="mt-2 flex flex-col gap-2 sm:flex-row">
+                    <input id="offer-share-url" type="text" readonly value="{{ share_url }}" class="min-w-0 flex-1 rounded border border-gfa-grey/30 bg-black/50 p-3 font-mono text-sm text-gfa-grey">
+                    <button id="copy-offer-link" type="button" class="rounded bg-gfa-blue px-4 py-3 font-bold text-white hover:bg-blue-600">Copy Link</button>
+                    <button id="share-offer-link" type="button" class="hidden rounded border border-gfa-light/40 px-4 py-3 font-bold text-gfa-light hover:bg-gfa-light/10">Share</button>
+                </div>
+                <p id="share-offer-status" class="mt-2 min-h-5 text-sm text-gfa-light" aria-live="polite"></p>
+            </div>
+        </div>
+    </section>
+
+    <section class="rounded-lg border border-red-400/20 bg-red-950/20 p-4 text-sm text-red-100">
+        <strong>Trade safely:</strong> Liquidity.spot only introduces the two sides. Never share seed phrases, private keys, wallet passwords, or the guest recovery key. Confirm addresses and the whole-satoshi BTC amount in the trade room before sending.
+    </section>
+</div>
+
+<script>
+    const offerShareUrl = document.getElementById('offer-share-url');
+    const copyOfferLink = document.getElementById('copy-offer-link');
+    const shareOfferLink = document.getElementById('share-offer-link');
+    const shareOfferStatus = document.getElementById('share-offer-status');
+
+    copyOfferLink.addEventListener('click', async () => {
+        try {
+            await navigator.clipboard.writeText(offerShareUrl.value);
+            shareOfferStatus.textContent = 'Offer link copied.';
+        } catch (error) {
+            offerShareUrl.focus();
+            offerShareUrl.select();
+            shareOfferStatus.textContent = 'Select and copy the highlighted link.';
+        }
+    });
+
+    if (navigator.share) {
+        shareOfferLink.classList.remove('hidden');
+        shareOfferLink.addEventListener('click', async () => {
+            try {
+                await navigator.share({
+                    title: '{{ offer_context.waiting_label }}: {{ offer.amount_hns }} HNS',
+                    text: '{{ offer_context.action_label }} on Liquidity.spot',
+                    url: offerShareUrl.value
+                });
+            } catch (error) {
+                if (error.name !== 'AbortError') shareOfferStatus.textContent = 'Could not open the share menu. Copy the link instead.';
+            }
+        });
+    }
+</script>
+{% endblock %}

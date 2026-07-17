@@ -12,11 +12,11 @@
                 </div>
                 <h1 class="text-4xl font-bold text-gfa-light">Human P2P Swaps</h1>
                 <p class="text-gfa-grey mt-2 max-w-3xl">
-                    Post offers, match with another user, and coordinate the trade in a shared room using the same Alice/Bob language as the trustless flow.
+                    This is a matching board, not an instant exchange. Post an offer, share its permalink, and wait for another person to take the other side. A shared trade room opens only after they accept.
                 </p>
             </div>
             <div class="bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-4 text-sm text-yellow-100 md:max-w-sm">
-                <strong>Note:</strong> This is the functional P2P board. The deeper product background and trustless-testing explanation are shown lower on the page.
+                <strong>How it works:</strong> Posting does not send BTC or HNS. It creates a public offer that still needs a buyer or seller to accept it.
             </div>
         </div>
     </div>
@@ -86,15 +86,16 @@
                     <button type="button" class="text-xs bg-white/10 text-gfa-grey px-3 py-1 rounded hover:bg-white/20" onclick="clearP2PListingForm()">Clear Form</button>
                 </div>
                 <button type="submit" class="w-full bg-gfa-light text-gfa-dark font-bold py-2 rounded hover:bg-white transition">
-                    Post P2P Offer
+                    Post Offer &amp; Get Share Link
                 </button>
             </form>
         </div>
 
         <div class="xl:col-span-3 bg-black/30 p-6 rounded-lg border border-gfa-grey/20">
             <h2 class="text-2xl font-bold text-white mb-4">Open P2P Offers</h2>
+            <p class="mb-4 text-sm text-gfa-grey">Each listing is waiting for a real counterparty. Open or share an offer to connect the HNS buyer and seller.</p>
             {% if offers %}
-                <div>
+                <div class="overflow-x-auto">
                     <table class="w-full text-left text-sm">
                         <thead>
                             <tr class="border-b border-gfa-grey/30">
@@ -108,6 +109,7 @@
                         </thead>
                         <tbody>
                             {% for offer in offers %}
+                            {% set context = offer_contexts[offer.id] %}
                             <tr id="offer-{{ offer.id }}" class="border-b border-gfa-grey/10 hover:bg-white/5">
                                 <td class="p-2 align-top">
                                     <div class="font-medium text-white">{{ offer.creator.username }}</div>
@@ -119,14 +121,8 @@
                                     {% endif %}
                                 </td>
                                 <td class="p-2 align-top">
-                                    <span class="block uppercase {{ 'text-green-400' if offer.side == 'buy' else 'text-red-400' }}">{{ offer.side }}</span>
-                                    <span class="block text-xs text-gfa-grey leading-snug">
-                                        {% if offer.side == 'sell' %}
-                                            Creator is Alice
-                                        {% else %}
-                                            Creator is Bob
-                                        {% endif %}
-                                    </span>
+                                    <span class="block text-xs font-bold text-yellow-200">{{ context.waiting_label }}</span>
+                                    <span class="mt-1 block text-xs text-gfa-grey leading-snug">Creator: {{ context.creator_role }}</span>
                                 </td>
                                 <td class="p-2 align-top">{{ offer.amount_hns }}</td>
                                 <td class="p-2 align-top font-mono">{{ '%.12f'|format(offer.price_btc_per_hns) }}</td>
@@ -136,16 +132,20 @@
                                 </td>
                                 <td class="p-2 align-top text-right">
                                     {% if offer.creator_id == session.get('user_id') %}
-                                        <form method="POST" action="{{ url_for('main.cancel_p2p_offer', offer_id=offer.id) }}">
-                                            <button type="submit" class="text-red-400 hover:text-red-300 text-xs">Cancel</button>
-                                        </form>
+                                        <div class="flex flex-col items-end gap-2">
+                                            <a href="{{ url_for('main.p2p_offer_details', offer_id=offer.id) }}" class="rounded bg-gfa-light px-3 py-1 text-xs font-bold text-gfa-dark hover:bg-white">View &amp; Share</a>
+                                            <form method="POST" action="{{ url_for('main.cancel_p2p_offer', offer_id=offer.id) }}">
+                                                <button type="submit" class="text-red-400 hover:text-red-300 text-xs">Cancel</button>
+                                            </form>
+                                        </div>
                                     {% else %}
                                         <form method="POST" action="{{ url_for('main.accept_p2p_offer', offer_id=offer.id) }}" onsubmit="return confirmP2PAccept(this)">
                                             <input type="hidden" name="offer_side" value="{{ offer.side }}">
                                             <input type="hidden" name="offer_amount" value="{{ offer.amount_hns }}">
                                             <input type="hidden" name="offer_price" value="{{ '%.12f'|format(offer.price_btc_per_hns) }}">
-                                            <button type="submit" class="bg-gfa-blue text-white text-xs px-3 py-1 rounded hover:bg-blue-600">Open Trade Room</button>
+                                            <button type="submit" class="bg-gfa-blue text-white text-xs px-3 py-1 rounded hover:bg-blue-600">{{ context.action_label }}</button>
                                         </form>
+                                        <a href="{{ url_for('main.p2p_offer_details', offer_id=offer.id) }}" class="mt-2 inline-block text-xs text-gfa-light hover:text-white">View shareable offer</a>
                                     {% endif %}
                                 </td>
                             </tr>
