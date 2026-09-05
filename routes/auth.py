@@ -1,12 +1,13 @@
 from flask import Blueprint, redirect, request, session, url_for, current_app, flash, render_template
 from functools import wraps
-import requests
+from requests import RequestException
 from models import db, User
 from datetime import datetime
 import hashlib
 import hmac
 import re
 import secrets
+from services.http_client import post as http_post
 
 auth_bp = Blueprint('auth', __name__)
 GUEST_RECOVERY_TOKEN_PATTERN = re.compile(r'^ls-guest-[0-9a-f]{4}(?:-[0-9a-f]{4}){7}$')
@@ -129,8 +130,8 @@ def callback():
     exchange_url = "https://wallet.gfavip.com/api/auth/sso/exchange"
 
     try:
-        response = requests.post(exchange_url, json={'code': code}, timeout=5)
-    except requests.RequestException:
+        response = http_post(exchange_url, json={'code': code}, timeout=5)
+    except RequestException:
         flash('Authentication failed: Validation service unavailable.', 'error')
         return redirect(url_for('main.index'))
 

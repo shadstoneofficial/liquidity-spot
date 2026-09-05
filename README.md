@@ -30,7 +30,7 @@ This project is early and should be treated as experimental software.
 
 Requirements:
 
-- Python 3.11+
+- Python 3.11 (the deployment and CI version)
 - SQLite for local development
 - PostgreSQL for production-style deployments
 
@@ -39,9 +39,9 @@ Setup:
 ```bash
 git clone https://github.com/shadstoneofficial/liquidity-spot.git
 cd liquidity-spot
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
+python3.11 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements-lock.txt
 cp .env.example .env
 python run.py
 ```
@@ -53,6 +53,9 @@ http://localhost:8000
 ```
 
 The app creates local database tables on startup.
+
+See `CONTRIBUTING.md` for the isolated test setup and complete verification
+command. Tests do not require `.env`, credentials, or external services.
 
 ## Environment Variables
 

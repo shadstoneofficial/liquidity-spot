@@ -18,6 +18,7 @@ class Config:
     BTC_WATCHER_BASE_URL = os.environ.get('BTC_WATCHER_BASE_URL', 'https://blockstream.info/api')
     HNS_WATCHER_BASE_URL = os.environ.get('HNS_WATCHER_BASE_URL')
     ATOMIC_SWAP_NETWORK = os.environ.get('ATOMIC_SWAP_NETWORK', 'main')
+    ALLOW_EXTERNAL_HTTP = True
 
 class DevelopmentConfig(Config):
     DEBUG = True
@@ -25,8 +26,19 @@ class DevelopmentConfig(Config):
 class ProductionConfig(Config):
     DEBUG = False
 
+class TestingConfig(Config):
+    TESTING = True
+    SECRET_KEY = 'test-only-secret'
+    SQLALCHEMY_DATABASE_URI = 'sqlite://'
+    GFAVIP_WALLET_API_KEY = None
+    BTC_WATCHER_BASE_URL = None
+    HNS_WATCHER_BASE_URL = None
+    ATOMIC_SWAP_NETWORK = 'regtest'
+    ALLOW_EXTERNAL_HTTP = False
+
 config = {
     'development': DevelopmentConfig,
     'production': ProductionConfig,
+    'testing': TestingConfig,
     'default': DevelopmentConfig
 }

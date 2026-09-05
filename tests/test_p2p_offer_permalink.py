@@ -1,7 +1,4 @@
-import os
 import unittest
-
-os.environ['DATABASE_URL'] = 'sqlite://'
 
 from app import create_app
 from models import P2POffer, P2PTrade, db
@@ -9,8 +6,7 @@ from models import P2POffer, P2PTrade, db
 
 class P2POfferPermalinkTests(unittest.TestCase):
     def setUp(self):
-        self.app = create_app('default')
-        self.app.config.update(TESTING=True, SECRET_KEY='test-secret')
+        self.app = create_app('testing')
         with self.app.app_context():
             db.create_all()
 

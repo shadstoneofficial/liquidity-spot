@@ -2,7 +2,8 @@ import re
 import hashlib
 from datetime import datetime
 
-import requests
+from requests import RequestException
+from services.http_client import get as http_get
 
 
 HEX_RE = re.compile(r'^[0-9a-fA-F]+$')
@@ -18,8 +19,8 @@ def _request_json(base_url, path, timeout=10):
 
     url = f"{base_url.rstrip('/')}/{path.lstrip('/')}"
     try:
-        response = requests.get(url, timeout=timeout)
-    except requests.RequestException as exc:
+        response = http_get(url, timeout=timeout)
+    except RequestException as exc:
         raise WatcherError(str(exc)) from exc
 
     if response.status_code == 404:

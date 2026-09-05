@@ -1,5 +1,6 @@
-import requests
+from requests import RequestException
 from flask import current_app
+from services.http_client import post as http_post
 
 
 class GemsServiceError(Exception):
@@ -33,7 +34,7 @@ def _wallet_url(path):
 
 def _wallet_post(path, user_id, amount, reason, metadata=None):
     try:
-        response = requests.post(
+        response = http_post(
             _wallet_url(path),
             headers=_wallet_headers(),
             json={
@@ -44,7 +45,7 @@ def _wallet_post(path, user_id, amount, reason, metadata=None):
             },
             timeout=15
         )
-    except requests.RequestException as exc:
+    except RequestException as exc:
         raise GemsServiceError(f'Wallet service request failed: {exc}') from exc
 
     try:

@@ -4,7 +4,6 @@ import os
 from routes.auth import attach_guest_recovery_token, login_required
 import secrets
 import hashlib
-import requests
 import re
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from datetime import datetime, timedelta
@@ -18,6 +17,7 @@ from services.gems_service import (
 )
 from services.chain_watchers import WatcherError, verify_bitcoin_tx, verify_hns_tx
 from services.swap_adapters import build_swap_intents
+from services.http_client import get as http_get
 
 main_bp = Blueprint('main', __name__)
 SWAP_STALE_CANCEL_HOURS = 24
@@ -136,7 +136,7 @@ def _hash_secret(secret):
 
 def _current_hns_btc_price():
     try:
-        response = requests.get(
+        response = http_get(
             'https://api.coingecko.com/api/v3/simple/price?ids=handshake&vs_currencies=btc',
             timeout=8,
         )

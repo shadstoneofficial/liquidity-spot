@@ -6,19 +6,52 @@ The project is still early, so the most useful contributions are small, easy to 
 
 ## Development Setup
 
+Liquidity Spot supports Python 3.11, matching the Docker image and CI. Create
+an isolated environment; do not install its packages globally.
+
 ```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
+python3.11 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements-lock.txt
 cp .env.example .env
 python run.py
 ```
 
-Run a syntax check before opening a pull request:
+The application uses SQLite locally by default. The `.env` file and local
+database files are ignored by Git.
+
+## Tests
+
+Tests use the explicit `testing` configuration: an in-memory SQLite database,
+a test-only secret, the `regtest` network, no wallet credential or chain
+watcher, and an application-level block on outbound HTTP. You do not need to
+create `.env` to run them.
+
+Run the complete suite with one command from the repository root:
 
 ```bash
-python3 -m compileall app.py config.py models.py routes services
+python -m unittest discover -s tests -v
 ```
+
+Run the same compile check used by CI before opening a pull request:
+
+```bash
+python -m compileall app.py config.py models.py routes services
+```
+
+`requirements.txt` is the short, human-maintained list of direct production
+dependencies. `requirements-lock.txt` pins the complete Python 3.11 dependency
+graph used locally and in CI. To intentionally update the lock, create and
+activate a clean Python 3.11 virtual environment, then run:
+
+```bash
+python -m pip install --upgrade -r requirements.txt
+python -m pip freeze > requirements-lock.txt
+python -m pip check
+python -m unittest discover -s tests -v
+```
+
+Review all version changes before committing them.
 
 ## Contribution Priorities
 
