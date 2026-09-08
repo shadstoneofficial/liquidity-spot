@@ -67,7 +67,7 @@ def ensure_p2p_schema():
                 )
 
 def ensure_p2p_offer_bond_schema():
-    """Add upfront offer-bond state and retire legacy unfunded listings."""
+    """Add upfront offer-bond state without changing existing listings."""
     inspector = inspect(db.engine)
 
     if 'p2p_offers' not in inspector.get_table_names():
@@ -89,13 +89,6 @@ def ensure_p2p_offer_bond_schema():
                 connection.execute(
                     text(f"ALTER TABLE p2p_offers ADD COLUMN {column_name} {column_type}")
                 )
-
-        connection.execute(text(
-            "UPDATE p2p_offers "
-            "SET status = 'bond_required', maker_bond_status = 'not_locked' "
-            "WHERE status = 'open' AND gems_stake > 0 "
-            "AND (maker_bond_status IS NULL OR maker_bond_status = 'none')"
-        ))
 
 def ensure_p2p_feedback_schema():
     """Create feedback indexes for completed P2P trade reputation."""
