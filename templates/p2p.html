@@ -69,7 +69,10 @@
                 <div>
                     <label class="block text-gfa-grey mb-1">Gems Bond (Optional)</label>
                     <input type="number" name="gems_stake" id="p2p-gems-stake" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white" placeholder="25">
-                    <p class="text-xs text-gfa-grey mt-1">Optional maker-only bond. GFAVIP login is required only if you choose to use Gems.</p>
+                    <p class="text-xs text-gfa-grey mt-1">
+                        Optional promise backed by the offer creator's GFAVIP Gems. It is locked only when someone accepts.
+                        <a href="{{ url_for('main.gems_guide') }}" class="font-bold text-gfa-light hover:text-white">How Gems bonds work</a>
+                    </p>
                 </div>
                 <div>
                     <label class="block text-gfa-grey mb-1">Notes</label>
@@ -128,7 +131,10 @@
                                 <td class="p-2 align-top font-mono">{{ '%.12f'|format(offer.price_btc_per_hns) }}</td>
                                 <td class="p-2 align-top text-xs text-gfa-grey">
                                     <div>{{ offer.payment_method }}</div>
-                                    <div class="mt-2">{{ offer.gems_stake }} 💎 bond</div>
+                                    <div class="mt-2">
+                                        {{ offer.gems_stake }} 💎 maker bond
+                                        <a href="{{ url_for('main.gems_guide') }}" class="ml-1 text-gfa-light hover:text-white" aria-label="Learn how Gems bonds work">What is this?</a>
+                                    </div>
                                 </td>
                                 <td class="p-2 align-top text-right">
                                     {% if offer.creator_id == session.get('user_id') %}

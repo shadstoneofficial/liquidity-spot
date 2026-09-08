@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}What Are Gems? | Liquidity.spot{% endblock %}
+
+{% block meta %}
+<meta name="description" content="Learn what GFAVIP Gems are and how optional maker bonds work on Liquidity.spot.">
+{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-5xl space-y-8 py-4">
+    <header class="border-b border-gfa-light/20 pb-8">
+        <p class="mb-3 text-sm font-bold uppercase text-gfa-light">Gems guide</p>
+        <h1 class="text-3xl font-bold text-white sm:text-4xl">What are Gems?</h1>
+        <p class="mt-4 max-w-3xl text-lg leading-relaxed text-gfa-grey">
+            Gems are account points from GFAVIP. On Liquidity.spot, an offer creator can optionally pledge them as a bond to show they intend to complete a P2P trade.
+        </p>
+        <p class="mt-3 max-w-3xl font-bold text-white">
+            Gems are not HNS or BTC, and you do not need Gems for a normal P2P offer with no bond.
+        </p>
+    </header>
+
+    <section aria-labelledby="bond-steps">
+        <h2 id="bond-steps" class="text-2xl font-bold text-white">How a Gems bond works</h2>
+        <ol class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3">
+            <li class="border-l-4 border-gfa-light bg-black/25 p-5">
+                <p class="text-sm font-bold text-gfa-light">1. The maker pledges</p>
+                <p class="mt-2 text-gfa-grey">The person posting the offer chooses a bond amount. The listing remains public while it waits for another trader.</p>
+            </li>
+            <li class="border-l-4 border-yellow-400 bg-black/25 p-5">
+                <p class="text-sm font-bold text-yellow-200">2. Acceptance locks it</p>
+                <p class="mt-2 text-gfa-grey">When someone accepts, Liquidity.spot locks that amount from the offer creator's GFAVIP Gems balance. The taker does not pay the maker's bond.</p>
+            </li>
+            <li class="border-l-4 border-gfa-blue bg-black/25 p-5">
+                <p class="text-sm font-bold text-blue-200">3. The bond is resolved</p>
+                <p class="mt-2 text-gfa-grey">It is normally returned when the trade completes. In a dispute, an administrator can review the record and slash the bond.</p>
+            </li>
+        </ol>
+    </section>
+
+    <section class="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div class="border border-gfa-grey/20 bg-black/25 p-6">
+            <h2 class="text-xl font-bold text-white">If you are accepting an offer</h2>
+            <p class="mt-3 text-gfa-grey">A bond shown on a listing belongs to the offer creator. You do not need that number of Gems to accept it.</p>
+            <p class="mt-3 text-gfa-grey">If the creator no longer has enough Gems, the trade room cannot open. Nothing is taken from you. Ask the creator to add Gems or repost with a smaller bond, or choose another offer.</p>
+        </div>
+
+        <div class="border border-gfa-grey/20 bg-black/25 p-6">
+            <h2 class="text-xl font-bold text-white">If you created the offer</h2>
+            <p class="mt-3 text-gfa-grey">Keep at least the pledged number of Gems available until someone accepts your offer.</p>
+            <p class="mt-3 text-gfa-grey">If your balance is too low, add Gems in GFAVIP or cancel the listing and post a new one with a smaller bond or no bond.</p>
+        </div>
+    </section>
+
+    <section class="border border-yellow-500/30 bg-yellow-950/25 p-6">
+        <h2 class="text-xl font-bold text-white">What a Gems bond does not do</h2>
+        <ul class="mt-4 list-disc space-y-2 pl-5 text-gfa-grey">
+            <li>It does not guarantee that a trade will succeed or that a counterparty is trustworthy.</li>
+            <li>It does not insure, hold, or automatically return your HNS or BTC.</li>
+            <li>It does not replace checking addresses, amounts, payment status, and the trade-room record yourself.</li>
+        </ul>
+    </section>
+
+    <div class="flex flex-col gap-3 border-t border-gfa-light/20 pt-6 sm:flex-row">
+        <a href="{{ url_for('main.p2p') }}" class="rounded bg-gfa-light px-5 py-3 text-center font-bold text-gfa-dark hover:bg-white transition">Browse P2P offers</a>
+        {% if session.get('auth_method') == 'guest' or not session.get('user_id') %}
+            <a href="{{ url_for('auth.login') }}" class="rounded border border-gfa-light/40 px-5 py-3 text-center font-bold text-gfa-light hover:bg-gfa-light/10 transition">Connect GFAVIP</a>
+        {% elif session.get('user_id') %}
+            <a href="{{ url_for('main.profile') }}" class="rounded border border-gfa-light/40 px-5 py-3 text-center font-bold text-gfa-light hover:bg-gfa-light/10 transition">View Gems balance</a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

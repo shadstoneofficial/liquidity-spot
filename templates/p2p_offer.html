@@ -62,8 +62,11 @@
                 <dd class="mt-1 text-white">{{ offer.payment_method }}</dd>
             </div>
             <div>
-                <dt class="text-xs uppercase tracking-wide text-gfa-grey">Gems bond</dt>
-                <dd class="mt-1 text-white">{{ offer.gems_stake or 0 }} 💎</dd>
+                <dt class="text-xs uppercase tracking-wide text-gfa-grey">Maker Gems bond</dt>
+                <dd class="mt-1 text-white">
+                    {{ offer.gems_stake or 0 }} 💎
+                    <a href="{{ url_for('main.gems_guide') }}" class="ml-2 text-sm font-bold text-gfa-light hover:text-white">What is this?</a>
+                </dd>
             </div>
         </dl>
 

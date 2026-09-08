@@ -978,6 +978,12 @@ def api_liquidity_channel():
 def tutorial():
     return render_template('tutorial.html')
 
+
+@main_bp.route('/gems')
+def gems_guide():
+    return render_template('gems.html')
+
+
 @main_bp.route('/p2p')
 def p2p():
     offers = P2POffer.query.filter_by(status='open').order_by(P2POffer.created_at.desc()).all()
@@ -1123,7 +1129,18 @@ def accept_p2p_offer(offer_id):
         except GemsServiceError as exc:
             bond_status = 'failed'
             bond_error = str(exc)
-            flash(f'Could not lock the maker Gems bond: {exc}', 'error')
+            flash({
+                'title': 'This offer cannot start yet',
+                'detail': (
+                    f'The offer creator does not have enough Gems to cover their '
+                    f'{offer.gems_stake}-Gem bond. No Gems, HNS, or BTC were taken from you.'
+                ),
+                'tips': [
+                    'Ask the offer creator to add Gems in GFAVIP, then try again.',
+                    'Ask them to cancel and repost the offer with a smaller bond or no bond.',
+                    'Choose another open offer while this one is unavailable.',
+                ],
+            }, 'gems_error')
             return redirect(url_for('main.p2p'))
 
     trade = P2PTrade(
