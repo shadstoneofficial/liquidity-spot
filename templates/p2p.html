@@ -70,9 +70,13 @@
                     <label class="block text-gfa-grey mb-1">Gems Bond (Optional)</label>
                     <input type="number" name="gems_stake" id="p2p-gems-stake" class="w-full bg-black/50 border border-gfa-grey/30 rounded p-2 text-white" placeholder="25">
                     <p class="text-xs text-gfa-grey mt-1">
-                        Optional promise backed by the offer creator's GFAVIP Gems. It is locked only when someone accepts.
+                        Optional maker bond. The Gems are locked immediately before your offer goes live and returned when you cancel or complete the trade.
                         <a href="{{ url_for('main.gems_guide') }}" class="font-bold text-gfa-light hover:text-white">How Gems bonds work</a>
                     </p>
+                    <div id="p2p-gems-lock-summary" class="mt-3 hidden border border-yellow-500/40 bg-yellow-950/30 p-3 text-sm text-yellow-100" aria-live="polite">
+                        <strong id="p2p-gems-lock-amount"></strong>
+                        will be deducted now and held as your maker bond. Your offer will not go live unless the lock succeeds.
+                    </div>
                 </div>
                 <div>
                     <label class="block text-gfa-grey mb-1">Notes</label>
@@ -88,8 +92,8 @@
                     <button type="button" class="text-xs bg-white/10 text-gfa-grey px-3 py-1 rounded hover:bg-white/20" onclick="reuseLastP2PListing()">Reuse Last Listing</button>
                     <button type="button" class="text-xs bg-white/10 text-gfa-grey px-3 py-1 rounded hover:bg-white/20" onclick="clearP2PListingForm()">Clear Form</button>
                 </div>
-                <button type="submit" class="w-full bg-gfa-light text-gfa-dark font-bold py-2 rounded hover:bg-white transition">
-                    Post Offer &amp; Get Share Link
+                <button type="submit" id="p2p-submit-offer" class="w-full bg-gfa-light text-gfa-dark font-bold py-2 rounded hover:bg-white transition">
+                    <span id="p2p-submit-offer-label">Post Offer &amp; Get Share Link</span>
                 </button>
             </form>
         </div>
@@ -132,8 +136,12 @@
                                 <td class="p-2 align-top text-xs text-gfa-grey">
                                     <div>{{ offer.payment_method }}</div>
                                     <div class="mt-2">
-                                        {{ offer.gems_stake }} 💎 maker bond
-                                        <a href="{{ url_for('main.gems_guide') }}" class="ml-1 text-gfa-light hover:text-white" aria-label="Learn how Gems bonds work">What is this?</a>
+                                        {% if offer.gems_stake and offer.gems_stake > 0 %}
+                                            {{ offer.gems_stake }} 💎 locked maker bond
+                                            <a href="{{ url_for('main.gems_guide') }}" class="ml-1 text-gfa-light hover:text-white" aria-label="Learn how Gems bonds work">What is this?</a>
+                                        {% else %}
+                                            No Gems bond
+                                        {% endif %}
                                     </div>
                                 </td>
                                 <td class="p-2 align-top text-right">
@@ -271,6 +279,21 @@
         document.getElementById('p2p-total-btc').textContent = total.toFixed(12) + ' BTC';
     }
 
+    function updateP2PGemsBond() {
+        const input = document.getElementById('p2p-gems-stake');
+        const summary = document.getElementById('p2p-gems-lock-summary');
+        const amountLabel = document.getElementById('p2p-gems-lock-amount');
+        const submitLabel = document.getElementById('p2p-submit-offer-label');
+        if (!input || !summary || !amountLabel || !submitLabel) return;
+
+        const amount = Math.max(0, parseInt(input.value, 10) || 0);
+        summary.classList.toggle('hidden', amount === 0);
+        amountLabel.textContent = `${amount} ${amount === 1 ? 'Gem' : 'Gems'}`;
+        submitLabel.textContent = amount > 0
+            ? `Lock ${amount} ${amount === 1 ? 'Gem' : 'Gems'} & Post Offer`
+            : 'Post Offer & Get Share Link';
+    }
+
     function confirmP2PAccept(form) {
         const side = (form.querySelector('[name="offer_side"]')?.value || '').toUpperCase();
         const amount = form.querySelector('[name="offer_amount"]')?.value || 'the listed';
@@ -296,6 +319,7 @@
         document.getElementById('p2p-gems-stake').value = data.gems_stake || '';
         document.getElementById('p2p-notes').value = data.notes || '';
         updateP2PTotal();
+        updateP2PGemsBond();
     }
 
     function clearP2PListingForm() {
@@ -307,12 +331,14 @@
         document.getElementById('p2p-gems-stake').value = '';
         document.getElementById('p2p-notes').value = '';
         updateP2PTotal();
+        updateP2PGemsBond();
     }
 
     const p2pOfferForm = document.getElementById('p2p-offer-form');
     if (p2pOfferForm) {
         document.getElementById('p2p-amount').addEventListener('input', updateP2PTotal);
         document.getElementById('p2p-price').addEventListener('input', updateP2PTotal);
+        document.getElementById('p2p-gems-stake').addEventListener('input', updateP2PGemsBond);
         p2pOfferForm.addEventListener('submit', function() {
             localStorage.setItem('liquiditySpotLastP2PListing', JSON.stringify({
                 side: document.getElementById('p2p-side').value,
@@ -325,6 +351,7 @@
         });
 
         updateP2PTotal();
+        updateP2PGemsBond();
     }
 </script>
 {% endblock %}

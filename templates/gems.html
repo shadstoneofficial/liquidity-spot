@@ -24,11 +24,11 @@
         <ol class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3">
             <li class="border-l-4 border-gfa-light bg-black/25 p-5">
                 <p class="text-sm font-bold text-gfa-light">1. The maker pledges</p>
-                <p class="mt-2 text-gfa-grey">The person posting the offer chooses a bond amount. The listing remains public while it waits for another trader.</p>
+                <p class="mt-2 text-gfa-grey">The person posting the offer chooses a bond amount. Liquidity.spot locks those Gems before the listing becomes public.</p>
             </li>
             <li class="border-l-4 border-yellow-400 bg-black/25 p-5">
-                <p class="text-sm font-bold text-yellow-200">2. Acceptance locks it</p>
-                <p class="mt-2 text-gfa-grey">When someone accepts, Liquidity.spot locks that amount from the offer creator's GFAVIP Gems balance. The taker does not pay the maker's bond.</p>
+                <p class="text-sm font-bold text-yellow-200">2. The offer goes live</p>
+                <p class="mt-2 text-gfa-grey">Only a successfully funded offer appears on the P2P board. The taker never pays the maker's bond.</p>
             </li>
             <li class="border-l-4 border-gfa-blue bg-black/25 p-5">
                 <p class="text-sm font-bold text-blue-200">3. The bond is resolved</p>
@@ -41,13 +41,13 @@
         <div class="border border-gfa-grey/20 bg-black/25 p-6">
             <h2 class="text-xl font-bold text-white">If you are accepting an offer</h2>
             <p class="mt-3 text-gfa-grey">A bond shown on a listing belongs to the offer creator. You do not need that number of Gems to accept it.</p>
-            <p class="mt-3 text-gfa-grey">If the creator no longer has enough Gems, the trade room cannot open. Nothing is taken from you. Ask the creator to add Gems or repost with a smaller bond, or choose another offer.</p>
+            <p class="mt-3 text-gfa-grey">If a bonded offer is visible, its Gems have already been locked. Accepting it does not charge you or ask the maker to fund it again.</p>
         </div>
 
         <div class="border border-gfa-grey/20 bg-black/25 p-6">
             <h2 class="text-xl font-bold text-white">If you created the offer</h2>
-            <p class="mt-3 text-gfa-grey">Keep at least the pledged number of Gems available until someone accepts your offer.</p>
-            <p class="mt-3 text-gfa-grey">If your balance is too low, add Gems in GFAVIP or cancel the listing and post a new one with a smaller bond or no bond.</p>
+            <p class="mt-3 text-gfa-grey">You need the full pledged amount available when you post. The offer goes live only after those Gems are locked.</p>
+            <p class="mt-3 text-gfa-grey">Canceling an unmatched offer returns its bond. A completed trade normally returns it; a dispute may lead to slashing after administrator review.</p>
         </div>
     </section>
 

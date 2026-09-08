@@ -438,6 +438,10 @@ def _refund_maker_bond(trade, reason, resolution='refunded'):
     trade.maker_bond_released_at = datetime.utcnow()
     trade.maker_bond_resolution = resolution
     trade.maker_bond_error = None
+    trade.offer.maker_bond_status = 'refunded'
+    trade.offer.maker_bond_released_at = trade.maker_bond_released_at
+    trade.offer.maker_bond_resolution = resolution
+    trade.offer.maker_bond_error = None
     return True, None
 
 
@@ -1055,13 +1059,19 @@ def create_p2p_offer():
     payment_method = request.form.get('payment_method') or 'Manual Wallet Transfer'
     notes = request.form.get('notes')
 
-    if gems_stake is None:
-        flash('Gems bond must be a whole number.', 'error')
+    if gems_stake is None or gems_stake < 0:
+        flash('Gems bond must be a non-negative whole number.', 'error')
         return redirect(url_for('main.p2p'))
 
     if not _gems_allowed_or_flash(gems_stake):
         return redirect(url_for('main.p2p'))
 
+    if gems_stake and gems_stake > 0 and not is_wallet_service_configured():
+        flash('A Gems bond cannot be posted while the GFAVIP wallet service is unavailable. Use no bond or try again later.', 'error')
+        return redirect(url_for('main.p2p'))
+
+    offer = None
+    bond_locked = False
     try:
         offer = P2POffer(
             creator_id=user.id,
@@ -1070,14 +1080,59 @@ def create_p2p_offer():
             price_btc_per_hns=Decimal(price),
             gems_stake=gems_stake,
             payment_method=payment_method,
-            notes=notes
+            notes=notes,
+            status='funding' if gems_stake and gems_stake > 0 else 'open',
+            maker_bond_status='pending' if gems_stake and gems_stake > 0 else 'none',
         )
         db.session.add(offer)
         db.session.commit()
+
+        if gems_stake and gems_stake > 0:
+            try:
+                wallet_deduct_gems(
+                    user.id,
+                    gems_stake,
+                    f'Liquidity.spot maker bond locked for P2P offer #{offer.id}',
+                    metadata={
+                        'service': 'liquidity-spot',
+                        'offer_id': offer.id,
+                        'operation_type': 'maker_bond_lock',
+                    },
+                )
+            except GemsServiceError as exc:
+                offer.status = 'bond_failed'
+                offer.maker_bond_status = 'failed'
+                offer.maker_bond_error = str(exc)
+                db.session.commit()
+                flash({
+                    'title': 'Your Gems bond could not be locked',
+                    'detail': (
+                        f'Offer #{offer.id} was not posted. You need {gems_stake} Gems '
+                        'available in GFAVIP before creating this bonded offer.'
+                    ),
+                    'tips': [
+                        'Add Gems in GFAVIP, then post the offer again.',
+                        'Choose a smaller bond that your available balance can cover.',
+                        'Enter 0 to post a normal P2P offer without a Gems bond.',
+                    ],
+                }, 'gems_error')
+                return redirect(url_for('main.p2p'))
+
+            bond_locked = True
+            offer.status = 'open'
+            offer.maker_bond_status = 'locked'
+            offer.maker_bond_locked_at = datetime.utcnow()
+            offer.maker_bond_error = None
+            db.session.commit()
+
         offer_context = _p2p_offer_context(offer)
+        bond_confirmation = (
+            f' {gems_stake} Gems are now locked until the offer is canceled or the trade is resolved.'
+            if gems_stake and gems_stake > 0 else ''
+        )
         flash(
             f"Offer #{offer.id} is live. {offer_context['waiting_label']}. "
-            'Share this page with someone who can take the other side.',
+            f'Share this page with someone who can take the other side.{bond_confirmation}',
             'success'
         )
         return redirect(url_for('main.p2p_offer_details', offer_id=offer.id))
@@ -1087,7 +1142,27 @@ def create_p2p_offer():
     except SQLAlchemyError:
         db.session.rollback()
         current_app.logger.exception('Error creating P2P offer')
-        flash('Error creating P2P offer. Please check the details and try again.', 'error')
+        refund_failed = False
+        if bond_locked and offer:
+            try:
+                wallet_credit_gems(
+                    user.id,
+                    gems_stake,
+                    f'Liquidity.spot refund after offer #{offer.id} could not be published',
+                    metadata={
+                        'service': 'liquidity-spot',
+                        'offer_id': offer.id,
+                        'operation_type': 'maker_bond_refund_publish_failure',
+                    },
+                )
+            except GemsServiceError:
+                refund_failed = True
+                current_app.logger.exception('Could not compensate maker bond after offer publish failure')
+
+        if refund_failed:
+            flash('The offer was not published, and its Gems refund needs administrator attention.', 'error')
+        else:
+            flash('Error creating P2P offer. Please check the details and try again.', 'error')
 
     return redirect(url_for('main.p2p'))
 
@@ -1104,41 +1179,21 @@ def accept_p2p_offer(offer_id):
         flash('This P2P offer is no longer available.', 'error')
         return redirect(url_for('main.p2p'))
 
-    bond_status = 'none'
-    bond_locked_at = None
-    bond_error = None
+    bond_status = offer.maker_bond_status or 'none'
+    bond_locked_at = offer.maker_bond_locked_at
+    bond_error = offer.maker_bond_error
 
     if offer.gems_stake and offer.gems_stake > 0:
-        if not is_wallet_service_configured():
-            flash('This offer includes a Gems bond, but the wallet service is not configured yet.', 'error')
-            return redirect(url_for('main.p2p'))
-
-        try:
-            wallet_deduct_gems(
-                offer.creator_id,
-                offer.gems_stake,
-                f'Liquidity.spot maker bond locked for P2P offer #{offer.id}',
-                metadata={
-                    'service': 'liquidity-spot',
-                    'offer_id': offer.id,
-                    'operation_type': 'maker_bond_lock'
-                }
-            )
-            bond_status = 'locked'
-            bond_locked_at = datetime.utcnow()
-        except GemsServiceError as exc:
-            bond_status = 'failed'
-            bond_error = str(exc)
+        if bond_status != 'locked':
             flash({
-                'title': 'This offer cannot start yet',
+                'title': 'This bonded offer is not available',
                 'detail': (
-                    f'The offer creator does not have enough Gems to cover their '
-                    f'{offer.gems_stake}-Gem bond. No Gems, HNS, or BTC were taken from you.'
+                    'The maker did not lock the listed Gems when this offer was created. '
+                    'No Gems, HNS, or BTC were taken from you.'
                 ),
                 'tips': [
-                    'Ask the offer creator to add Gems in GFAVIP, then try again.',
-                    'Ask them to cancel and repost the offer with a smaller bond or no bond.',
-                    'Choose another open offer while this one is unavailable.',
+                    'Ask the maker to post a new offer under the upfront-locking rules.',
+                    'Choose another funded offer from the P2P board.',
                 ],
             }, 'gems_error')
             return redirect(url_for('main.p2p'))
@@ -1434,9 +1489,39 @@ def cancel_p2p_offer(offer_id):
         flash('This P2P offer can no longer be canceled.', 'error')
         return redirect(url_for('main.p2p'))
 
+    if offer.maker_bond_status == 'locked' and offer.gems_stake > 0:
+        if not is_wallet_service_configured():
+            flash('The offer is still open because its Gems bond cannot be refunded while the wallet service is unavailable.', 'error')
+            return redirect(url_for('main.p2p_offer_details', offer_id=offer.id))
+
+        offer.status = 'canceling'
+        db.session.commit()
+        try:
+            wallet_credit_gems(
+                offer.creator_id,
+                offer.gems_stake,
+                f'Liquidity.spot maker bond refund for canceled P2P offer #{offer.id}',
+                metadata={
+                    'service': 'liquidity-spot',
+                    'offer_id': offer.id,
+                    'operation_type': 'maker_bond_refund_canceled_offer',
+                },
+            )
+        except GemsServiceError as exc:
+            offer.status = 'refund_failed'
+            offer.maker_bond_error = str(exc)
+            db.session.commit()
+            flash('The offer is closed, but its Gems refund needs administrator attention.', 'error')
+            return redirect(url_for('main.p2p_offer_details', offer_id=offer.id))
+
+        offer.maker_bond_status = 'refunded'
+        offer.maker_bond_released_at = datetime.utcnow()
+        offer.maker_bond_resolution = 'offer_canceled'
+        offer.maker_bond_error = None
+
     offer.status = 'canceled'
     db.session.commit()
-    flash('P2P offer canceled.', 'success')
+    flash('P2P offer canceled. Its Gems bond was refunded.' if offer.gems_stake else 'P2P offer canceled.', 'success')
     return redirect(url_for('main.p2p'))
 
 @main_bp.route('/')

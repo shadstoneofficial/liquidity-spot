@@ -105,6 +105,10 @@ def resolve_p2p_trade(trade_id):
             trade.maker_bond_released_at = datetime.utcnow()
             trade.maker_bond_resolution = 'refunded'
             trade.maker_bond_error = None
+            trade.offer.maker_bond_status = 'refunded'
+            trade.offer.maker_bond_released_at = trade.maker_bond_released_at
+            trade.offer.maker_bond_resolution = 'refunded'
+            trade.offer.maker_bond_error = None
         except GemsServiceError as exc:
             trade.maker_bond_error = str(exc)
             flash(f'Could not refund maker bond: {exc}', 'error')
@@ -115,6 +119,10 @@ def resolve_p2p_trade(trade_id):
         trade.maker_bond_released_at = datetime.utcnow()
         trade.maker_bond_resolution = 'slashed_full'
         trade.maker_bond_error = None
+        trade.offer.maker_bond_status = 'slashed'
+        trade.offer.maker_bond_released_at = trade.maker_bond_released_at
+        trade.offer.maker_bond_resolution = 'slashed_full'
+        trade.offer.maker_bond_error = None
 
     db.session.commit()
     flash(f'P2P trade #{trade.id} admin review updated.', 'success')

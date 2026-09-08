@@ -66,6 +66,37 @@ def ensure_p2p_schema():
                     text(f"ALTER TABLE p2p_trades ADD COLUMN {column_name} {column_type}")
                 )
 
+def ensure_p2p_offer_bond_schema():
+    """Add upfront offer-bond state and retire legacy unfunded listings."""
+    inspector = inspect(db.engine)
+
+    if 'p2p_offers' not in inspector.get_table_names():
+        return
+
+    existing_columns = {col['name'] for col in inspector.get_columns('p2p_offers')}
+    required_columns = {
+        'maker_bond_status': "VARCHAR(20) DEFAULT 'none'",
+        'maker_bond_locked_at': "TIMESTAMP",
+        'maker_bond_released_at': "TIMESTAMP",
+        'maker_bond_resolution': "VARCHAR(30)",
+        'maker_bond_error': "TEXT",
+    }
+
+    with db.engine.begin() as connection:
+        for column_name, column_type in required_columns.items():
+            if column_name not in existing_columns:
+                print(f"Adding missing column p2p_offers.{column_name}...", flush=True)
+                connection.execute(
+                    text(f"ALTER TABLE p2p_offers ADD COLUMN {column_name} {column_type}")
+                )
+
+        connection.execute(text(
+            "UPDATE p2p_offers "
+            "SET status = 'bond_required', maker_bond_status = 'not_locked' "
+            "WHERE status = 'open' AND gems_stake > 0 "
+            "AND (maker_bond_status IS NULL OR maker_bond_status = 'none')"
+        ))
+
 def ensure_p2p_feedback_schema():
     """Create feedback indexes for completed P2P trade reputation."""
     inspector = inspect(db.engine)
@@ -167,6 +198,7 @@ try:
         print("Creating/Verifying database tables...", flush=True)
         create_tables_tolerating_worker_race()
         ensure_user_schema()
+        ensure_p2p_offer_bond_schema()
         ensure_p2p_schema()
         ensure_p2p_feedback_schema()
         ensure_atomic_swap_schema()

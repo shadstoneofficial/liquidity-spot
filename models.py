@@ -96,7 +96,12 @@ class P2POffer(db.Model):
     gems_stake = db.Column(db.Integer, default=0)
     payment_method = db.Column(db.String(50), default='Manual Wallet Transfer')
     notes = db.Column(db.Text)
-    status = db.Column(db.String(20), default='open')          # open / matched / canceled
+    status = db.Column(db.String(20), default='open')          # funding / open / matched / canceled / bond_required / bond_failed
+    maker_bond_status = db.Column(db.String(20), default='none')  # none / pending / locked / refunded / slashed / failed / not_locked
+    maker_bond_locked_at = db.Column(db.DateTime)
+    maker_bond_released_at = db.Column(db.DateTime)
+    maker_bond_resolution = db.Column(db.String(30))
+    maker_bond_error = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     creator = db.relationship('User', backref='p2p_offers')
 
